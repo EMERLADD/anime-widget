@@ -93,7 +93,7 @@ class LauncherActivity : Activity() {
 
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setPadding(dp(22), dp(18), dp(22), dp(30))
-            addView(TextView(context).apply { text = "Anime Maid Widget v1.2.1"; textSize = 26f; gravity = Gravity.CENTER; setTextColor(Color.rgb(24, 86, 150)) })
+            addView(TextView(context).apply { text = "Anime Maid Widget v1.2.2"; textSize = 26f; gravity = Gravity.CENTER; setTextColor(Color.rgb(24, 86, 150)) })
             addView(TextView(context).apply { text = "对话内容与天气 API 设置"; textSize = 15f; gravity = Gravity.CENTER; setPadding(0, dp(4), 0, dp(10)) })
             addView(title("女仆对话"))
             addView(label("调用模式"))
