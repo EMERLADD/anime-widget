@@ -22,6 +22,14 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".DialogueSettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".WeatherSettingsActivity"
+            android:exported="false" />
+
         <receiver
             android:name=".AnimeMaidWidget"
             android:exported="true">

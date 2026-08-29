@@ -12,6 +12,7 @@ from widget_config import (
     F_HOUR_SMALL, load_layout, weather_name, get_weather,
 )
 from widget_ui import rounded, centered_text
+from widget_theme import WIDGET_GRADIENT_TOP, WIDGET_GRADIENT_BOTTOM
 from dialogue_bubble import draw_dialogue_bubble
 
 LAYOUT = load_layout()
@@ -29,9 +30,9 @@ snowy=code in {71,73,75,77,85,86}
 rng=random.Random(now.strftime("%Y%m%d%H"))
 
 # ---- bright anime sky background ----
-if night: top,bottom=(35,48,104),(84,75,145)
-elif rainy: top,bottom=(92,143,183),(159,190,213)
-else: top,bottom=(72,164,242),(174,220,250)
+# These two widget-wide colors are isolated in widget_theme.py so a future
+# character palette extractor can replace them without touching composition.
+top, bottom = WIDGET_GRADIENT_TOP, WIDGET_GRADIENT_BOTTOM
 
 img=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,255)); draw=ImageDraw.Draw(img)
 for y in range(HEIGHT):
