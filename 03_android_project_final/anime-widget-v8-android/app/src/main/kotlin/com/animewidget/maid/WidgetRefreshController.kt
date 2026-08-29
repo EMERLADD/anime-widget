@@ -3,9 +3,11 @@ package com.animewidget.maid
 import android.Manifest
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -16,57 +18,25 @@ import android.os.Looper
 import android.os.SystemClock
 import android.widget.RemoteViews
 import androidx.core.app.ActivityCompat
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
 import kotlin.coroutines.resume
 
-/** Coordinates the visible refresh state, location, weather, dialogue, and final render. */
+/** Native Widget publication plus short Android location acquisition. */
 object WidgetRefreshController {
-
-    enum class RefreshStart { STARTED, ALREADY_RUNNING, TOO_SOON }
-
-    private const val MIN_REFRESH_INTERVAL_MS = 5_000L
     private const val FRESH_LOCATION_MAX_AGE_MS = 60_000L
     private const val CURRENT_LOCATION_TIMEOUT_MS = 3_000L
-    private val refreshStateLock = Any()
-    private val refreshingWidgetIds = mutableSetOf<Int>()
-    private val lastRefreshStartedAt = mutableMapOf<Int, Long>()
 
-    fun tryStartManualRefresh(widgetId: Int): RefreshStart = synchronized(refreshStateLock) {
-        if (widgetId in refreshingWidgetIds) return@synchronized RefreshStart.ALREADY_RUNNING
-        val now = SystemClock.elapsedRealtime()
-        val last = lastRefreshStartedAt[widgetId] ?: Long.MIN_VALUE
-        if (last != Long.MIN_VALUE && now - last < MIN_REFRESH_INTERVAL_MS) {
-            return@synchronized RefreshStart.TOO_SOON
-        }
-        refreshingWidgetIds += widgetId
-        lastRefreshStartedAt[widgetId] = now
-        RefreshStart.STARTED
-    }
-
-    fun finishManualRefresh(widgetId: Int) = synchronized(refreshStateLock) {
-        refreshingWidgetIds -= widgetId
-    }
-
-    fun renderPendingIntent(context: Context): PendingIntent {
-        val intent = Intent(context, AnimeMaidWidget::class.java).apply {
-            action = AnimeMaidWidget.ACTION_RENDER
-        }
-        return PendingIntent.getBroadcast(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
+    fun widgetIds(context: Context): IntArray = AppWidgetManager.getInstance(context)
+        .getAppWidgetIds(ComponentName(context, AnimeMaidWidget::class.java))
 
     private fun createViews(context: Context, widgetId: Int, refreshing: Boolean): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.anime_widget_layout)
         val refreshIntent = Intent(context, AnimeMaidWidget::class.java).apply {
             action = AnimeMaidWidget.ACTION_MANUAL_REFRESH
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -98,51 +68,36 @@ object WidgetRefreshController {
         else manager.updateAppWidget(widgetId, views)
     }
 
-    private suspend fun publishRenderedImage(
-        context: Context,
-        manager: AppWidgetManager,
-        widgetId: Int,
-        pngPath: String?,
-        refreshing: Boolean
-    ) {
-        val views = createViews(context, widgetId, refreshing)
-        if (pngPath != null) {
-            val bitmap = withContext(Dispatchers.IO) {
-                android.graphics.BitmapFactory.decodeFile(pngPath)
-            }
-            bitmap?.let { views.setImageViewBitmap(R.id.widget_image, it) }
-        }
-        manager.updateAppWidget(widgetId, views)
-    }
-
-    suspend fun initialRefresh(context: Context, manager: AppWidgetManager, widgetId: Int) {
-        val path = withContext(Dispatchers.IO) {
-            PythonBridge.refreshAndRenderWidgetPng(context)
-        }
-        publishRenderedImage(context, manager, widgetId, path, refreshing = false)
-    }
-
-    suspend fun renderAllFromCache(context: Context) {
+    fun publishControlsToAll(context: Context, refreshing: Boolean) {
         val manager = AppWidgetManager.getInstance(context)
-        val ids = manager.getAppWidgetIds(
-            android.content.ComponentName(context, AnimeMaidWidget::class.java)
-        )
+        for (id in widgetIds(context)) publishControls(context, manager, id, refreshing, partial = true)
+    }
+
+    fun publishCachedImage(context: Context, ids: IntArray = widgetIds(context)): Boolean {
+        val file = File(context.filesDir, "anime-widget/cache/widget.png")
+        val bitmap = BitmapFactory.decodeFile(file.absolutePath) ?: return false
+        val manager = AppWidgetManager.getInstance(context)
+        val refreshing = RefreshStateStore.isRefreshing(context)
         for (id in ids) {
-            val path = withContext(Dispatchers.IO) { PythonBridge.renderWidgetPng(context) }
-            publishRenderedImage(context, manager, id, path, refreshing = false)
+            val views = createViews(context, id, refreshing)
+            views.setImageViewBitmap(R.id.widget_image, bitmap)
+            manager.updateAppWidget(id, views)
+        }
+        return true
+    }
+
+    fun publishRenderedImageToAll(context: Context, pngPath: String, refreshing: Boolean) {
+        val bitmap = BitmapFactory.decodeFile(pngPath)
+            ?: throw IllegalStateException("Unable to decode rendered Widget image")
+        val manager = AppWidgetManager.getInstance(context)
+        for (id in widgetIds(context)) {
+            val views = createViews(context, id, refreshing)
+            views.setImageViewBitmap(R.id.widget_image, bitmap)
+            manager.updateAppWidget(id, views)
         }
     }
 
-    suspend fun manualRefresh(context: Context, manager: AppWidgetManager, widgetId: Int) {
-        // Fast path: the native waiting icon is already visible. Render only the final PNG.
-        val location = getCurrentOrLastLocation(context)
-        val finalPath = withContext(Dispatchers.IO) {
-            PythonBridge.manualRefreshAndRenderWidgetPng(context, location)
-        }
-        publishRenderedImage(context, manager, widgetId, finalPath, refreshing = false)
-    }
-
-    private suspend fun getCurrentOrLastLocation(context: Context): Location? {
+    suspend fun getCurrentOrLastLocation(context: Context): Location? {
         val fine = ActivityCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
@@ -191,7 +146,6 @@ object WidgetRefreshController {
                     manager.removeUpdates(this)
                     if (continuation.isActive) continuation.resume(location)
                 }
-
                 override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
                 override fun onProviderEnabled(provider: String) = Unit
                 override fun onProviderDisabled(provider: String) = Unit

@@ -74,10 +74,7 @@ DATE_X,DATE_Y=LAYOUT["date"]["x"],LAYOUT["date"]["y"]
 rounded(draw, (DATE_X,DATE_Y,DATE_X+452,DATE_Y+70),26,(20,88,174,165))
 centered_text(draw, (DATE_X,DATE_Y,DATE_X+452,DATE_Y+70),f"{now:%Y / %m / %d}  ·  {weekday}",F_DATE,"white")
 
-# time with navy soft stroke
-CLOCK_X,CLOCK_Y=LAYOUT["clock"]["x"],LAYOUT["clock"]["y"]
-draw.text((CLOCK_X,CLOCK_Y),now.strftime("%H:%M"),font=F_TIME,fill=(250,252,255),
-          stroke_width=5,stroke_fill=(25,60,135))
+# Time is rendered by Android TextClock so it keeps ticking without waking Python.
 
 # location pill — two-line live location, kept clear of the character
 parts=LOCATION.split(" · ",1)
@@ -167,6 +164,8 @@ try: stamp=datetime.fromisoformat(w["updated"]).strftime("%H:%M")
 except: stamp="--:--"
 draw.text((WX+287,WY+160),f"更新 {stamp}",font=F_TINY,fill=(235,247,255,210))
 
-img.convert("RGB").save(OUTPUT,"PNG",optimize=True)
+temp_output = OUTPUT.with_suffix(".tmp.png")
+img.convert("RGB").save(temp_output,"PNG",optimize=True)
+temp_output.replace(OUTPUT)
 print("Rendered:",OUTPUT)
 print(f"{LOCATION} | {w['temperature']}° {condition} | 体感 {w['feels_like']}°")

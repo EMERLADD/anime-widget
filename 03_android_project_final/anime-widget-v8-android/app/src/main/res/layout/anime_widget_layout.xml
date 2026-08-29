@@ -10,6 +10,26 @@
         android:scaleType="fitCenter"
         android:contentDescription="@string/app_name" />
 
+    <!-- System-owned clock: continues to tick even when the app process is stopped. -->
+    <TextClock
+        android:id="@+id/widget_clock"
+        android:layout_width="160dp"
+        android:layout_height="62dp"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="27dp"
+        android:format12Hour="HH:mm"
+        android:format24Hour="HH:mm"
+        android:fontFamily="sans-serif-black"
+        android:gravity="center_vertical"
+        android:includeFontPadding="false"
+        android:shadowColor="#193C87"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="3"
+        android:textColor="#FAFCFF"
+        android:textSize="42sp" />
+
     <!-- Native Android control: independent of Pillow rendering and always clickable. -->
     <ImageView
         android:id="@+id/refresh_image"
