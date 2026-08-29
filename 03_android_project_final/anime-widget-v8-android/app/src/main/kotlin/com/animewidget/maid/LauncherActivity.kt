@@ -32,10 +32,12 @@ import org.json.JSONObject
 class LauncherActivity : Activity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var dialogueConfig: JSONObject
+    private lateinit var builtinDialogue: JSONObject
     private lateinit var weatherConfig: JSONObject
     private lateinit var modeSpinner: Spinner
     private lateinit var categorySpinner: Spinner
     private lateinit var dialogueEditor: EditText
+    private lateinit var builtinPreview: TextView
     private lateinit var providerSpinner: Spinner
     private lateinit var endpointEditor: EditText
     private lateinit var apiKeyEditor: EditText
@@ -57,12 +59,16 @@ class LauncherActivity : Activity() {
         setContentView(buildUi())
         scope.launch {
             try {
-                val pair = withContext(Dispatchers.IO) {
-                    PythonBridge.getDialogueConfigJson(this@LauncherActivity) to
+                val configs = withContext(Dispatchers.IO) {
+                    Triple(
+                        PythonBridge.getDialogueConfigJson(this@LauncherActivity),
+                        PythonBridge.getBuiltinDialogueJson(this@LauncherActivity),
                         PythonBridge.getWeatherConfigJson(this@LauncherActivity)
+                    )
                 }
-                dialogueConfig = JSONObject(pair.first)
-                weatherConfig = JSONObject(pair.second)
+                dialogueConfig = JSONObject(configs.first)
+                builtinDialogue = JSONObject(configs.second)
+                weatherConfig = JSONObject(configs.third)
                 loaded = true
                 showDialogueConfig()
                 showWeatherConfig()
@@ -96,8 +102,19 @@ class LauncherActivity : Activity() {
             addView(label("对话分类"))
             categorySpinner = Spinner(context).also { addView(it) }
             categorySpinner.adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, categoryLabels)
-            addView(label("每行一条对话；需要气泡内换行时写 \\n"))
+            addView(label("内置对话预览（只读，随分类切换）"))
+            builtinPreview = TextView(context).also {
+                it.textSize = 14f; it.setTextColor(Color.DKGRAY); it.setPadding(dp(12), dp(10), dp(12), dp(10)); it.setBackgroundColor(Color.rgb(247, 247, 247))
+                addView(it, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            }
+            addView(label("自定义对话：每行一条，可一次粘贴多行；气泡内换行写 \\n"))
             dialogueEditor = editor(7).also { addView(it, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(190))) }
+            val dialogueActions = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(button("新增一条") { addDialogueLine() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                addView(button("移除当前行") { removeDialogueLine() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            addView(dialogueActions)
             addView(button("保存对话并更新小组件") { saveDialogue() })
 
             addView(title("天气 API"))
@@ -147,6 +164,27 @@ class LauncherActivity : Activity() {
             when (item) { is JSONObject -> if (item.optBoolean("enabled", true)) item.optString("text") else null; is String -> item; else -> null }
         }
         dialogueEditor.setText(lines.joinToString("\n"))
+        val builtins = builtinDialogue.optJSONArray(currentCategory) ?: JSONArray()
+        val previewLines = (0 until builtins.length()).mapNotNull { builtins.optString(it).takeIf(String::isNotBlank) }
+        builtinPreview.text = if (previewLines.isEmpty()) "（此分类没有内置对话）" else previewLines.joinToString("\n\n") { "• ${it.replace("\\n", "\n")}" }
+    }
+
+    private fun addDialogueLine() {
+        val current = dialogueEditor.text.toString()
+        dialogueEditor.setText(if (current.isBlank()) "" else current.trimEnd() + "\n")
+        dialogueEditor.setSelection(dialogueEditor.text.length)
+        dialogueEditor.requestFocus()
+    }
+
+    private fun removeDialogueLine() {
+        val text = dialogueEditor.text.toString()
+        if (text.isEmpty()) return
+        val cursor = dialogueEditor.selectionStart.coerceAtLeast(0).coerceAtMost(text.length)
+        val lineIndex = text.take(cursor).count { it == '\n' }.coerceAtMost(text.lines().lastIndex)
+        val lines = text.lines().toMutableList()
+        lines.removeAt(lineIndex)
+        dialogueEditor.setText(lines.joinToString("\n"))
+        dialogueEditor.setSelection(dialogueEditor.text.length.coerceAtMost(cursor))
     }
 
     private fun captureDialogue(category: String) {

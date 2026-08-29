@@ -104,6 +104,12 @@ def get_dialogue_config_json():
     return json.dumps(load_config(), ensure_ascii=False)
 
 
+def get_builtin_dialogue_json():
+    """Return built-in dialogue for read-only preview in the settings UI."""
+    from dialogue import DEFAULTS
+    return json.dumps(DEFAULTS, ensure_ascii=False)
+
+
 def save_dialogue_config_json(text):
     from dialogue_customize import save_config
     return json.dumps(save_config(json.loads(str(text))), ensure_ascii=False)

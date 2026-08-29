@@ -91,6 +91,12 @@ object PythonBridge {
             .callAttr("get_dialogue_config_json").toString()
     }
 
+    fun getBuiltinDialogueJson(context: Context): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("get_builtin_dialogue_json").toString()
+    }
+
     fun saveDialogueConfigJson(context: Context, json: String): String {
         ensureStarted(context)
         return Python.getInstance().getModule("bridge")
