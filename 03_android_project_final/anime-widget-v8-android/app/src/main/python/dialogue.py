@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 import random
 
 # Priority: severe/specific weather -> late night -> daypart -> global fallback.
@@ -39,13 +40,29 @@ def _load(folder: Path, category: str):
         pass
     return [s.replace("\\\\n", "\n") for s in DEFAULTS.get(category, DEFAULTS["global"])]
 
-def _pick(folder: Path, category: str, now, variation=0):
-    lines = _load(folder, category)
+def get_builtin_entries(folder: Path, category: str):
+    entries = []
+    used_ids = set()
+    for index, text in enumerate(_load(Path(folder), category)):
+        digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:12]
+        entry_id = f"builtin_{category}_{digest}"
+        if entry_id in used_ids:
+            entry_id = f"{entry_id}_{index + 1}"
+        used_ids.add(entry_id)
+        entries.append({"id": entry_id, "text": text})
+    return entries
+
+
+def _pick(folder: Path, category: str, now, variation=0, disabled_ids=None):
+    disabled_ids = disabled_ids or set()
+    entries = [item for item in get_builtin_entries(folder, category) if item["id"] not in disabled_ids]
+    if not entries:
+        return None
     # Stable inside each 30-minute slot. Manual refresh advances deterministically,
     # avoiding accidental repeats when the category contains multiple lines.
     slot = f"{now:%Y-%m-%d-%H}-{now.minute // 30}-{category}"
-    base_index = random.Random(slot).randrange(len(lines))
-    return lines[(base_index + int(variation)) % len(lines)]
+    base_index = random.Random(slot).randrange(len(entries))
+    return entries[(base_index + int(variation)) % len(entries)]["text"]
 
 def _weather_category(code: int):
     if code in (0, 1):
@@ -87,7 +104,7 @@ def _save_last_cat(folder, cat_str):
     except Exception:
         pass
 
-def get_builtin_line(weather, now, folder, variation=0):
+def get_builtin_line(weather, now, folder, variation=0, disabled_ids=None):
     folder = Path(folder)
     code = int(weather.get("weather_code", -1))
     temp = weather.get("temperature")
@@ -101,18 +118,18 @@ def get_builtin_line(weather, now, folder, variation=0):
 
     # 第一层（最高/覆盖）：问题天气 + 极端温度，顶掉下面两层。
     if code in SEVERE_CODES:
-        return _pick(folder, cat, now, variation)
+        return _pick(folder, cat, now, variation, disabled_ids) or _pick(folder, "global", now, variation, disabled_ids) or "……"
     if isinstance(temp, (int, float)) and temp >= 33:
-        return _pick(folder, "hot", now, variation)
+        return _pick(folder, "hot", now, variation, disabled_ids) or _pick(folder, "global", now, variation, disabled_ids) or "……"
     if isinstance(temp, (int, float)) and temp <= 5:
-        return _pick(folder, "cold", now, variation)
+        return _pick(folder, "cold", now, variation, disabled_ids) or _pick(folder, "global", now, variation, disabled_ids) or "……"
 
     # 第二层（主：global 闲聊） vs 第三层（次：普通天气）。
     # 天气类别变化时强制聊一句；否则按概率偶尔聊。
     slot = f"{now:%Y%m%d%H}{now.minute // 30}-{variation}"
     if cat is not None and (changed or random.Random("blend:" + slot).random() < WEATHER_PROB):
-        return _pick(folder, cat, now, variation)
-    return _pick(folder, "global", now, variation)
+        return _pick(folder, cat, now, variation, disabled_ids) or _pick(folder, "global", now, variation, disabled_ids) or "……"
+    return _pick(folder, "global", now, variation, disabled_ids) or "……"
 
 
 # Compatibility for callers outside the Android project.

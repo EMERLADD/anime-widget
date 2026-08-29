@@ -1,5 +1,6 @@
-"""User dialogue storage and selection. Built-in dialogue remains in dialogue.py."""
+"""User dialogue storage, migration, overrides, and selection."""
 import random
+import uuid
 from config_store import CONFIG_DIR, atomic_write_json, read_json
 
 CONFIG_FILE = CONFIG_DIR / "dialogue_customize.json"
@@ -8,36 +9,84 @@ MODES = {"builtin", "custom", "mixed"}
 
 
 def default_config():
-    return {"schema_version": 1, "mode": "mixed", "custom_weight": 50, "categories": {name: [] for name in CATEGORIES}}
+    return {
+        "schema_version": 2,
+        "mode": "mixed",
+        "custom_weight": 50,
+        "categories": {name: [] for name in CATEGORIES},
+        "builtin_overrides": {},
+    }
+
+
+def _stable_migration_id(category, index, text):
+    value = uuid.uuid5(uuid.NAMESPACE_URL, f"anime-widget:{category}:{index}:{text}").hex
+    return f"custom_{value}"
 
 
 def normalize_config(data):
     result = default_config()
-    if not isinstance(data, dict): return result
+    if not isinstance(data, dict):
+        return result
     mode = str(data.get("mode", "mixed"))
     result["mode"] = mode if mode in MODES else "mixed"
-    try: result["custom_weight"] = max(0, min(100, int(data.get("custom_weight", 50))))
-    except Exception: pass
+    try:
+        result["custom_weight"] = max(0, min(100, int(data.get("custom_weight", 50))))
+    except Exception:
+        pass
+
+    used_ids = set()
     source = data.get("categories", {})
     for category in CATEGORIES:
         entries = source.get(category, []) if isinstance(source, dict) else []
         clean, seen = [], set()
         for index, entry in enumerate(entries if isinstance(entries, list) else []):
-            if isinstance(entry, str): text, enabled = entry, True
-            elif isinstance(entry, dict): text, enabled = entry.get("text", ""), bool(entry.get("enabled", True))
-            else: continue
+            if isinstance(entry, str):
+                text, enabled, entry_id = entry, True, ""
+            elif isinstance(entry, dict):
+                text = entry.get("text", "")
+                enabled = bool(entry.get("enabled", True))
+                entry_id = str(entry.get("id", "")).strip()
+            else:
+                continue
             text = str(text).strip()[:120]
-            if not text or text in seen: continue
+            if not text or text in seen:
+                continue
             seen.add(text)
-            clean.append({"id": f"custom_{category}_{index + 1:03d}", "text": text, "enabled": enabled})
-            if len(clean) >= 100: break
+            if not entry_id.startswith("custom_") or entry_id in used_ids:
+                entry_id = _stable_migration_id(category, index, text)
+                while entry_id in used_ids:
+                    entry_id = f"custom_{uuid.uuid4().hex}"
+            used_ids.add(entry_id)
+            clean.append({"id": entry_id, "text": text, "enabled": enabled})
+            if len(clean) >= 100:
+                break
         result["categories"][category] = clean
+
+    overrides = data.get("builtin_overrides", {})
+    if isinstance(overrides, dict):
+        for entry_id, value in overrides.items():
+            entry_id = str(entry_id)
+            if not entry_id.startswith("builtin_"):
+                continue
+            enabled = value.get("enabled", True) if isinstance(value, dict) else bool(value)
+            if not enabled:
+                result["builtin_overrides"][entry_id] = {"enabled": False}
     return result
 
 
-def load_config(): return normalize_config(read_json(CONFIG_FILE, default_config()))
+def load_config():
+    return normalize_config(read_json(CONFIG_FILE, default_config()))
+
+
 def save_config(data):
-    clean = normalize_config(data); atomic_write_json(CONFIG_FILE, clean); return clean
+    clean = normalize_config(data)
+    atomic_write_json(CONFIG_FILE, clean)
+    return clean
+
+
+def disabled_builtin_ids(config):
+    return {entry_id for entry_id, value in config.get("builtin_overrides", {}).items() if not value.get("enabled", True)}
+
 
 def _lines(config, category):
     return [item["text"].replace("\\n", "\n") for item in config["categories"].get(category, []) if item.get("enabled", True) and item.get("text")]
@@ -46,11 +95,15 @@ def _lines(config, category):
 def _candidate_categories(weather, now):
     from dialogue import SEVERE_CODES, _weather_category
     code, temp = int(weather.get("weather_code", -1)), weather.get("temperature")
-    if code in SEVERE_CODES: yield _weather_category(code)
-    if isinstance(temp, (int, float)) and temp >= 33: yield "hot"
-    if isinstance(temp, (int, float)) and temp <= 5: yield "cold"
+    if code in SEVERE_CODES:
+        yield _weather_category(code)
+    if isinstance(temp, (int, float)) and temp >= 33:
+        yield "hot"
+    if isinstance(temp, (int, float)) and temp <= 5:
+        yield "cold"
     category = _weather_category(code)
-    if category: yield category
+    if category:
+        yield category
     hour = now.hour
     yield "late_night" if hour < 5 else "morning" if hour < 10 else "day" if hour < 17 else "evening" if hour < 22 else "night"
     yield "global"
