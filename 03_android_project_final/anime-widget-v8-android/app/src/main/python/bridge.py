@@ -97,3 +97,32 @@ def manual_refresh_and_render(lat=None, lon=None, label=None):
     from refresh_state import advance_dialogue_sequence
     advance_dialogue_sequence()
     return render_widget_png()
+
+
+def get_dialogue_config_json():
+    from dialogue_customize import load_config
+    return json.dumps(load_config(), ensure_ascii=False)
+
+
+def save_dialogue_config_json(text):
+    from dialogue_customize import save_config
+    return json.dumps(save_config(json.loads(str(text))), ensure_ascii=False)
+
+
+def get_weather_config_json():
+    from weather_service import config_json
+    return config_json()
+
+
+def save_weather_config_json(text):
+    from weather_service import save_config
+    return json.dumps(save_config(json.loads(str(text))), ensure_ascii=False)
+
+
+def test_weather_config_json(text, lat=31.27, lon=121.50):
+    try:
+        from weather_service import test_config
+        result = test_config(json.loads(str(text)), float(lat), float(lon))
+    except Exception as e:
+        result = {"success": False, "error": str(e)}
+    return json.dumps(result, ensure_ascii=False)

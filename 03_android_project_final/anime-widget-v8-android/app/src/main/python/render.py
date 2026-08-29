@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFilter
-from dialogue import get_maid_line
+from dialogue_selector import get_maid_line
 import weather_icons
 from datetime import datetime
 import os

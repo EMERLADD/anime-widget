@@ -85,6 +85,36 @@ object PythonBridge {
         return result.toString().ifBlank { null }
     }
 
+    fun getDialogueConfigJson(context: Context): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("get_dialogue_config_json").toString()
+    }
+
+    fun saveDialogueConfigJson(context: Context, json: String): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("save_dialogue_config_json", json).toString()
+    }
+
+    fun getWeatherConfigJson(context: Context): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("get_weather_config_json").toString()
+    }
+
+    fun saveWeatherConfigJson(context: Context, json: String): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("save_weather_config_json", json).toString()
+    }
+
+    fun testWeatherConfigJson(context: Context, json: String): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("test_weather_config_json", json).toString()
+    }
+
     /** Manual ↻: update location/weather first, then render. */
     fun refreshAndRenderWidgetPng(context: Context): String? {
         ensureStarted(context)

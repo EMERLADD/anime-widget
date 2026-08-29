@@ -87,7 +87,7 @@ def _save_last_cat(folder, cat_str):
     except Exception:
         pass
 
-def get_maid_line(weather, now, folder, variation=0):
+def get_builtin_line(weather, now, folder, variation=0):
     folder = Path(folder)
     code = int(weather.get("weather_code", -1))
     temp = weather.get("temperature")
@@ -113,3 +113,7 @@ def get_maid_line(weather, now, folder, variation=0):
     if cat is not None and (changed or random.Random("blend:" + slot).random() < WEATHER_PROB):
         return _pick(folder, cat, now, variation)
     return _pick(folder, "global", now, variation)
+
+
+# Compatibility for callers outside the Android project.
+get_maid_line = get_builtin_line

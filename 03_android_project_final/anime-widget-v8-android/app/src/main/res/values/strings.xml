@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Anime Maid Widget</string>
     <string name="launcher_title">Anime Maid Widget</string>
-    <string name="launcher_instructions">请返回桌面，长按空白处并选择“小组件”，然后添加 Anime Maid Widget。</string>
+    <string name="launcher_instructions">在应用内配置女仆对话和天气 API；返回桌面可添加小组件。</string>
     <string name="return_to_home">返回桌面</string>
     <string name="refresh_weather">刷新天气</string>
     <string name="refreshing_weather">正在刷新天气</string>

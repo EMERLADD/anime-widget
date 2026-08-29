@@ -97,65 +97,8 @@ def resolve_location():
     }
 
 def fetch_weather(loc):
-    lat = float(loc["latitude"])
-    lon = float(loc["longitude"])
-    location_name = loc.get("location") or DEFAULT_LOCATION
-
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "current": "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day",
-        "daily": "temperature_2m_max,temperature_2m_min",
-        "hourly": "temperature_2m,weather_code,precipitation_probability",
-        "timezone": "auto",
-        "forecast_days": 2
-    }
-
-    r = requests.get(
-        "https://api.open-meteo.com/v1/forecast",
-        params=params, timeout=8
-    )
-    r.raise_for_status()
-    x = r.json()
-    c, d, h = x["current"], x["daily"], x.get("hourly", {})
-
-    future = []
-    now_local = datetime.now()
-    times = h.get("time", [])
-    temps = h.get("temperature_2m", [])
-    codes = h.get("weather_code", [])
-    probs = h.get("precipitation_probability", [])
-
-    for i, time_str in enumerate(times):
-        try:
-            t = datetime.fromisoformat(time_str)
-        except Exception:
-            continue
-        if t > now_local:
-            future.append({
-                "time": t.strftime("%H:%M"),
-                "temperature": round(temps[i]),
-                "weather_code": int(codes[i]),
-                "rain_probability": round(probs[i] or 0)
-            })
-        if len(future) >= 3:
-            break
-
-    return {
-        "temperature": round(c["temperature_2m"]),
-        "feels_like": round(c["apparent_temperature"]),
-        "humidity": round(c["relative_humidity_2m"]),
-        "weather_code": int(c["weather_code"]),
-        "wind_speed": round(c["wind_speed_10m"]),
-        "is_day": int(c.get("is_day", 1)),
-        "max": round(d["temperature_2m_max"][0]),
-        "min": round(d["temperature_2m_min"][0]),
-        "latitude": lat,
-        "longitude": lon,
-        "location": location_name,
-        "hourly": future,
-        "updated": datetime.now().isoformat()
-    }
+    from weather_service import fetch_weather as provider_fetch
+    return provider_fetch(loc)
 
 def _distance_meters(lat1, lon1, lat2, lon2):
     radius = 6_371_000.0
