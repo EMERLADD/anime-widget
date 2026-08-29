@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/widget_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/app_name" />
+
+    <!-- Native Android control: independent of Pillow rendering and always clickable. -->
+    <ImageView
+        android:id="@+id/refresh_image"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/refresh_button_background"
+        android:padding="9dp"
+        android:src="@drawable/refresh_icon"
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/refresh_weather" />
+
+</FrameLayout>

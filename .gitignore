@@ -1,0 +1,19 @@
+# Android / Gradle generated files
+**/.gradle/
+**/build/
+**/local.properties
+
+# Python caches
+**/__pycache__/
+**/*.py[cod]
+
+# Packaged deliverables
+final_apk/
+*.apk
+
+# Editor and OS noise
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

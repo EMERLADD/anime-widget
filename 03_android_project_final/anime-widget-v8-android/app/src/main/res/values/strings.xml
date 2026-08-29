@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Anime Maid Widget</string>
+    <string name="launcher_title">Anime Maid Widget</string>
+    <string name="launcher_instructions">请返回桌面，长按空白处并选择“小组件”，然后添加 Anime Maid Widget。</string>
+    <string name="return_to_home">返回桌面</string>
+    <string name="refresh_weather">刷新天气</string>
+    <string name="refreshing_weather">正在刷新天气</string>
+</resources>

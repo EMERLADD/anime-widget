@@ -1,0 +1,9 @@
+#!/bin/sh
+F="$HOME/Python-3.13.7/pyconfig.h"
+for name in HAVE_FEXECVE HAVE_GETLOGIN_R HAVE_POSIX_SPAWN HAVE_POSIX_SPAWNP \
+    HAVE_PLOCK HAVE_SCHED_SETPARAM HAVE_SCHED_SETSCHEDULER \
+    HAVE_FDATASYNC; do
+    sed -i "s/#define $name 1/\/* #undef $name *\//" "$F"
+done
+echo "DONE"
+grep -n 'FEXECVE\|GETLOGIN_R\|POSIX_SPAWN\|PLOCK\|SCHED_SETPARAM\|SCHED_SETSCHEDULER\|FDATASYNC' "$F"
