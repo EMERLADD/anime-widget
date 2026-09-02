@@ -6,8 +6,8 @@ BASE=Path.home()/"anime-widget"; DATA=BASE/"data"; USER=BASE/"user"
 THEME_FILE=DATA/"theme.json"; EXTRACTION_FILE=DATA/"theme_extraction.json"; PREFERENCES_FILE=DATA/"theme_preferences.json"
 USER_CHARACTER=USER/"character.png"; BUILTIN_CHARACTER=BASE/"assets"/"character_only.png"
 DEFAULT_PRIMARY="#48A4F2"; DEFAULT_SECONDARY="#AEDCFA"
-DEFAULT_TEXT="#FFFFFF"
-DEFAULT_PREFERENCES={"schema_version":1,"mode":"auto","manual":{"primary":DEFAULT_PRIMARY,"secondary":DEFAULT_SECONDARY,"text":DEFAULT_TEXT},"manual_initialized":False,"app_follow_theme":True}
+DEFAULT_TEXT="#FFFFFF"; DEFAULT_BUBBLE_TEXT=DEFAULT_TEXT
+DEFAULT_PREFERENCES={"schema_version":1,"mode":"auto","manual":{"primary":DEFAULT_PRIMARY,"secondary":DEFAULT_SECONDARY,"text":DEFAULT_TEXT,"bubble_text":DEFAULT_BUBBLE_TEXT},"manual_initialized":False,"app_follow_theme":True}
 DEFAULT_EXTRACTION={"schema_version":1,"sample_alpha_min":48,"maximum_dimension":8192,"maximum_pixels":33554432,"minimum_color_distance":42.0,"white_black":{"enabled":True,"white_luminance_min":.92,"white_saturation_max":.10,"black_luminance_max":.08,"allow_as_primary":False,"allow_as_secondary":True,"weight":.25},"skin_filter":{"enabled":True,"strength":1.0,"hue_min":5.0,"hue_max":48.0,"saturation_min":.10,"saturation_max":.78,"value_min":.30}}
 def _merge(a,b):
  r=dict(a)
@@ -94,7 +94,7 @@ def classic_theme():
  value["resolved"].update(_app_resolved(DEFAULT_PRIMARY,DEFAULT_SECONDARY)); return value
 def _default(): return classic_theme()
 def _manual_theme(manual):
- p=_color(manual.get("primary"),"主题色一"); s=_color(manual.get("secondary"),"主题色二"); text=_color(manual.get("text"),"字体颜色"); value=generate_theme(p,s,"manual"); value["source"]["text"]=text; value["resolved"]["text"]=text; value["resolved"]["bubble_text"]=text
+ p=_color(manual.get("primary"),"主题色一"); s=_color(manual.get("secondary"),"主题色二"); text=_color(manual.get("text"),"字体颜色"); bubble_text=_color(manual.get("bubble_text",text),"对话文字颜色"); value=generate_theme(p,s,"manual"); value["source"]["text"]=text; value["source"]["bubble_text"]=bubble_text; value["resolved"]["text"]=text; value["resolved"]["bubble_text"]=bubble_text
  rgb=_rgb(text); dark=(18,22,30); white=(255,255,255); value["resolved"]["text_stroke"]=_hex(dark if _contrast(rgb,dark)>=_contrast(rgb,white) else white); return value
 def _validate_preferences(value):
  if not isinstance(value,dict): raise ValueError("主题偏好必须是对象")
@@ -105,7 +105,8 @@ def _validate_preferences(value):
  manual_initialized=value.get("manual_initialized",False); app_follow_theme=value.get("app_follow_theme",True)
  if not isinstance(manual_initialized,bool): raise ValueError("manual_initialized 必须是布尔值")
  if not isinstance(app_follow_theme,bool): raise ValueError("app_follow_theme 必须是布尔值")
- return {"schema_version":1,"mode":mode,"manual":{"primary":_color(manual.get("primary",DEFAULT_PRIMARY),"主题色一"),"secondary":_color(manual.get("secondary",DEFAULT_SECONDARY),"主题色二"),"text":_color(manual.get("text",DEFAULT_TEXT),"字体颜色")},"manual_initialized":manual_initialized,"app_follow_theme":app_follow_theme}
+ text=_color(manual.get("text",DEFAULT_TEXT),"字体颜色")
+ return {"schema_version":1,"mode":mode,"manual":{"primary":_color(manual.get("primary",DEFAULT_PRIMARY),"主题色一"),"secondary":_color(manual.get("secondary",DEFAULT_SECONDARY),"主题色二"),"text":text,"bubble_text":_color(manual.get("bubble_text",text),"对话文字颜色")},"manual_initialized":manual_initialized,"app_follow_theme":app_follow_theme}
 def get_theme_preferences():
  raw={}
  try:
@@ -121,7 +122,7 @@ def get_theme_preferences():
   try: old=json.loads(THEME_FILE.read_text(encoding="utf-8"))
   except (OSError,ValueError): old={}
   source=old.get("source",{}) if isinstance(old,dict) else {}; resolved=old.get("resolved",{}) if isinstance(old,dict) else {}; old_mode=old.get("mode") if isinstance(old,dict) else None; mode=old_mode if old_mode in ("manual","classic") else "auto"
-  try: value=_validate_preferences({"mode":mode,"manual":{"primary":source.get("primary",DEFAULT_PRIMARY),"secondary":source.get("secondary",DEFAULT_SECONDARY),"text":source.get("text",resolved.get("text",DEFAULT_TEXT))},"manual_initialized":mode=="manual","app_follow_theme":True})
+  try: value=_validate_preferences({"mode":mode,"manual":{"primary":source.get("primary",DEFAULT_PRIMARY),"secondary":source.get("secondary",DEFAULT_SECONDARY),"text":source.get("text",resolved.get("text",DEFAULT_TEXT)),"bubble_text":source.get("bubble_text",resolved.get("bubble_text",source.get("text",resolved.get("text",DEFAULT_TEXT))))},"manual_initialized":mode=="manual","app_follow_theme":True})
   except (ValueError,TypeError): value=_merge({},DEFAULT_PREFERENCES)
   return _best_effort_preferences(value)
  except (OSError,ValueError,TypeError):

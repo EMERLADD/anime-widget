@@ -21,7 +21,7 @@ class CharacterSettingsActivity : Activity() {
     private lateinit var primary: TextView; private lateinit var secondary: TextView
     private lateinit var themeModes: RadioGroup
     private lateinit var autoMode: RadioButton; private lateinit var manualMode: RadioButton; private lateinit var classicMode: RadioButton
-    private lateinit var manualPrimary: TextView; private lateinit var manualSecondary: TextView; private lateinit var manualText: TextView
+    private lateinit var manualPrimary: TextView; private lateinit var manualSecondary: TextView; private lateinit var manualText: TextView; private lateinit var manualBubbleText: TextView
     private lateinit var appFollowTheme: Switch
     private lateinit var advancedContainer: LinearLayout; private lateinit var advancedToggle: Button
     private lateinit var skinOn: Switch; private lateinit var skinStrength: EditText
@@ -36,7 +36,7 @@ class CharacterSettingsActivity : Activity() {
     private var config = JSONObject(); private var preferences = JSONObject(); private var currentTheme = JSONObject(); private var busy = false
     private var loadingPreferences = true; private var manualInitialized = false
     private var colorDialog: AlertDialog? = null
-    private var manualPrimaryHex = "#48A4F2"; private var manualSecondaryHex = "#AEDCFA"; private var manualTextHex = "#FFFFFF"
+    private var manualPrimaryHex = "#48A4F2"; private var manualSecondaryHex = "#AEDCFA"; private var manualTextHex = "#FFFFFF"; private var manualBubbleTextHex = "#FFFFFF"
 
     override fun onCreate(state: Bundle?) { super.onCreate(state); title = "替换角色"; setContentView(ui()); AppThemeManager.apply(this); load() }
     override fun onResume() { super.onResume(); AppThemeManager.apply(this) }
@@ -65,6 +65,7 @@ class CharacterSettingsActivity : Activity() {
         manualPrimary=colorChoice("主题色一",manualPrimaryHex) { pickColor("主题色一",manualPrimaryHex) { manualPrimaryHex=it; paintChoice(manualPrimary,"主题色一",it) } }.also { addView(it) }
         manualSecondary=colorChoice("主题色二",manualSecondaryHex) { pickColor("主题色二",manualSecondaryHex) { manualSecondaryHex=it; paintChoice(manualSecondary,"主题色二",it) } }.also { addView(it) }
         manualText=colorChoice("字体颜色",manualTextHex) { pickColor("字体颜色",manualTextHex) { manualTextHex=it; paintChoice(manualText,"字体颜色",it) } }.also { addView(it) }
+        manualBubbleText=colorChoice("对话文字颜色",manualBubbleTextHex) { pickColor("对话文字颜色",manualBubbleTextHex) { manualBubbleTextHex=it; paintChoice(manualBubbleText,"对话文字颜色",it) } }.also { addView(it) }
         addView(button("从当前主题开始编辑") { copyCurrentThemeToManual(true) })
         appFollowTheme=Switch(context).apply { text="让应用界面跟随小组件主题" }.also { addView(it) }
         addView(button("应用主题") { applyTheme() })
@@ -107,7 +108,7 @@ class CharacterSettingsActivity : Activity() {
     private fun restore()=operate("已恢复默认角色；主题按当前模式处理") { ensure(PythonBridge.restoreDefaultCharacter(this)); rerender() }
     private fun selectedMode()=when(themeModes.checkedRadioButtonId){manualMode.id->"manual";classicMode.id->"classic";else->"auto"}
     private fun applyTheme() {
-        val next=JSONObject(preferences.toString()).put("mode",selectedMode()).put("manual_initialized",manualInitialized).put("app_follow_theme",appFollowTheme.isChecked).put("manual",JSONObject().put("primary",manualPrimaryHex).put("secondary",manualSecondaryHex).put("text",manualTextHex))
+        val next=JSONObject(preferences.toString()).put("mode",selectedMode()).put("manual_initialized",manualInitialized).put("app_follow_theme",appFollowTheme.isChecked).put("manual",JSONObject().put("primary",manualPrimaryHex).put("secondary",manualSecondaryHex).put("text",manualTextHex).put("bubble_text",manualBubbleTextHex))
         operate("主题已应用") { ensure(PythonBridge.saveThemePreferencesJson(this,next.toString())); preferences=next; rerender() }
     }
     private fun save() {
@@ -152,17 +153,17 @@ class CharacterSettingsActivity : Activity() {
         loadingPreferences=true
         val manual=preferences.optJSONObject("manual")?:JSONObject()
         manualInitialized=preferences.optBoolean("manual_initialized",false); appFollowTheme.isChecked=preferences.optBoolean("app_follow_theme",true)
-        manualPrimaryHex=validHex(manual.optString("primary"),"#48A4F2"); manualSecondaryHex=validHex(manual.optString("secondary"),"#AEDCFA"); manualTextHex=validHex(manual.optString("text"),"#FFFFFF")
+        manualPrimaryHex=validHex(manual.optString("primary"),"#48A4F2"); manualSecondaryHex=validHex(manual.optString("secondary"),"#AEDCFA"); manualTextHex=validHex(manual.optString("text"),"#FFFFFF"); manualBubbleTextHex=validHex(manual.optString("bubble_text"),manualTextHex)
         when(preferences.optString("mode","auto")){"manual"->manualMode.isChecked=true;"classic"->classicMode.isChecked=true;else->autoMode.isChecked=true}
         loadingPreferences=false
-        paintChoice(manualPrimary,"主题色一",manualPrimaryHex); paintChoice(manualSecondary,"主题色二",manualSecondaryHex); paintChoice(manualText,"字体颜色",manualTextHex); updateManualEnabled()
+        paintChoice(manualPrimary,"主题色一",manualPrimaryHex); paintChoice(manualSecondary,"主题色二",manualSecondaryHex); paintChoice(manualText,"字体颜色",manualTextHex); paintChoice(manualBubbleText,"对话文字颜色",manualBubbleTextHex); updateManualEnabled()
     }
     private fun validHex(value:String,fallback:String)=if(Regex("^#[0-9A-Fa-f]{6}$").matches(value))value.uppercase() else fallback
     private fun showTheme(j:JSONObject){currentTheme=j;val s=j.optJSONObject("source")?:j;paint(primary,"主色",s.optString("primary","#4D78C8"));paint(secondary,"次色",s.optString("secondary","#F4F6FA"))}
     private fun paint(v:TextView,n:String,hex:String){val c=runCatching{Color.parseColor(hex)}.getOrDefault(Color.GRAY);v.text="$n：$hex";v.setTextColor(contrastText(c));v.background=GradientDrawable().apply{cornerRadius=dp(6).toFloat();setColor(c);setStroke(dp(1),Color.GRAY)}}
     private fun paintChoice(v:TextView,n:String,hex:String){paint(v,"$n（点击选择）",hex)}
     private fun contrastText(color:Int):Int { val y=(Color.red(color)*299+Color.green(color)*587+Color.blue(color)*114)/1000;return if(y>=150)Color.BLACK else Color.WHITE }
-    private fun updateManualEnabled(){if(!::manualMode.isInitialized||!::manualPrimary.isInitialized)return;val enabled=manualMode.isChecked&&!busy;listOf(manualPrimary,manualSecondary,manualText).forEach{it.isEnabled=enabled;it.alpha=if(enabled)1f else .48f}}
+    private fun updateManualEnabled(){if(!::manualMode.isInitialized||!::manualPrimary.isInitialized)return;val enabled=manualMode.isChecked&&!busy;listOf(manualPrimary,manualSecondary,manualText,manualBubbleText).forEach{it.isEnabled=enabled;it.alpha=if(enabled)1f else .48f}}
     private fun copyCurrentThemeToManual(markInitialized:Boolean){
         if(currentTheme.length()==0){toast("当前主题仍在读取，请稍后重试");return}
         val source=currentTheme.optJSONObject("source")?:currentTheme
@@ -170,8 +171,9 @@ class CharacterSettingsActivity : Activity() {
         manualPrimaryHex=validHex(source.optString("primary"),manualPrimaryHex)
         manualSecondaryHex=validHex(source.optString("secondary"),manualSecondaryHex)
         manualTextHex=validHex(resolved.optString("text",source.optString("text")),manualTextHex)
+        manualBubbleTextHex=validHex(resolved.optString("bubble_text",source.optString("bubble_text")),manualTextHex)
         if(markInitialized)manualInitialized=true
-        paintChoice(manualPrimary,"主题色一",manualPrimaryHex);paintChoice(manualSecondary,"主题色二",manualSecondaryHex);paintChoice(manualText,"字体颜色",manualTextHex)
+        paintChoice(manualPrimary,"主题色一",manualPrimaryHex);paintChoice(manualSecondary,"主题色二",manualSecondaryHex);paintChoice(manualText,"字体颜色",manualTextHex);paintChoice(manualBubbleText,"对话文字颜色",manualBubbleTextHex)
     }
     private fun pickColor(titleText:String,initial:String,onChosen:(String)->Unit){
         val initialColor=runCatching{Color.parseColor(initial)}.getOrDefault(Color.WHITE)
@@ -184,9 +186,9 @@ class CharacterSettingsActivity : Activity() {
         box.addView(label("快捷色板"))
         val source=currentTheme.optJSONObject("source")?:currentTheme;val resolved=currentTheme.optJSONObject("resolved")?:JSONObject()
         val presets=listOf(
-            "当前主色" to validHex(source.optString("primary"),manualPrimaryHex),"当前次色" to validHex(source.optString("secondary"),manualSecondaryHex),"当前字体" to validHex(resolved.optString("text",source.optString("text")),manualTextHex),
+            "当前主色" to validHex(source.optString("primary"),manualPrimaryHex),"当前次色" to validHex(source.optString("secondary"),manualSecondaryHex),"当前字体" to validHex(resolved.optString("text",source.optString("text")),manualTextHex),"当前对话" to validHex(resolved.optString("bubble_text",source.optString("bubble_text")),manualBubbleTextHex),
             "黑" to "#000000","白" to "#FFFFFF","灰" to "#808080","浅灰" to "#D9D9D9","红" to "#FF0000","深红" to "#C00000","橙" to "#ED7D31","黄" to "#FFFF00","浅绿" to "#92D050","绿" to "#00B050","青" to "#00B0F0","浅蓝" to "#5B9BD5","蓝" to "#4472C4","紫" to "#7030A0","粉" to "#FF66CC","棕" to "#843C0C")
-        presets.chunked(5).forEach{group->box.addView(LinearLayout(this@CharacterSettingsActivity).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER;group.forEach{(name,hex)->addView(TextView(this@CharacterSettingsActivity).apply{tag=AppThemeManager.SKIP_TAG;contentDescription=name+" "+hex;text=when(name){"当前主色"->"主";"当前次色"->"次";"当前字体"->"字";else->""};gravity=Gravity.CENTER;setTextColor(contrastText(Color.parseColor(hex)));background=GradientDrawable().apply{cornerRadius=dp(4).toFloat();setColor(Color.parseColor(hex));setStroke(dp(1),Color.DKGRAY)};setOnClickListener{select(hex)}},LinearLayout.LayoutParams(0,dp(38),1f).apply{setMargins(dp(3),dp(3),dp(3),dp(3))})}})}
+        presets.chunked(5).forEach{group->box.addView(LinearLayout(this@CharacterSettingsActivity).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER;group.forEach{(name,hex)->addView(TextView(this@CharacterSettingsActivity).apply{tag=AppThemeManager.SKIP_TAG;contentDescription=name+" "+hex;text=when(name){"当前主色"->"主";"当前次色"->"次";"当前字体"->"字";"当前对话"->"话";else->""};gravity=Gravity.CENTER;setTextColor(contrastText(Color.parseColor(hex)));background=GradientDrawable().apply{cornerRadius=dp(4).toFloat();setColor(Color.parseColor(hex));setStroke(dp(1),Color.DKGRAY)};setOnClickListener{select(hex)}},LinearLayout.LayoutParams(0,dp(38),1f).apply{setMargins(dp(3),dp(3),dp(3),dp(3))})}})}
         box.addView(label("RGB 精确调色"))
         listOf("R","G","B").forEachIndexed{i,name->
             val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
