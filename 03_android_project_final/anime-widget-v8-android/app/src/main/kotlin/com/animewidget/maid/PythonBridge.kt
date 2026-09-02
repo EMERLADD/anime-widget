@@ -89,4 +89,51 @@ object PythonBridge {
         return Python.getInstance().getModule("bridge")
             .callAttr("test_weather_config_json", json).toString()
     }
+
+    @Synchronized
+    fun getLayoutConfigJson(context: Context): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("get_layout_config_json").toString()
+    }
+
+    @Synchronized
+    fun resetLayoutConfigJson(context: Context): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("reset_layout_config_json").toString()
+    }
+
+    @Synchronized
+    fun updateLayoutPositionsJson(context: Context, json: String): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("update_layout_positions_json", json).toString()
+    }
+    @Synchronized
+    fun getLayoutGeometryJson(context: Context): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("get_layout_geometry_json").toString()
+    }
+
+    @Synchronized
+    fun getCharacterThemeJson(context: Context): String { ensureStarted(context); return Python.getInstance().getModule("bridge").callAttr("get_character_theme_json").toString() }
+
+    @Synchronized
+    fun importCharacterPng(context: Context, path: String): String { ensureStarted(context); return Python.getInstance().getModule("bridge").callAttr("import_character_png", path).toString() }
+
+    @Synchronized
+    fun restoreDefaultCharacter(context: Context): String { ensureStarted(context); return Python.getInstance().getModule("bridge").callAttr("restore_default_character").toString() }
+
+    @Synchronized
+    fun getThemeExtractionJson(context: Context): String { ensureStarted(context); return Python.getInstance().getModule("bridge").callAttr("get_theme_extraction_json").toString() }
+
+    @Synchronized
+    fun saveThemeExtractionJson(context: Context, json: String): String { ensureStarted(context); return Python.getInstance().getModule("bridge").callAttr("save_theme_extraction_json", json).toString() }
+    @Synchronized
+    fun getThemePreferencesJson(context: Context): String { ensureStarted(context); return Python.getInstance().getModule("bridge").callAttr("get_theme_preferences_json").toString() }
+
+    @Synchronized
+    fun saveThemePreferencesJson(context: Context, json: String): String { ensureStarted(context); return Python.getInstance().getModule("bridge").callAttr("save_theme_preferences_json", json).toString() }
 }

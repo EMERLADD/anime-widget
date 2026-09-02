@@ -24,6 +24,7 @@ class ConfigActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppThemeManager.apply(this)
 
         // 先置为取消结果：如果 Activity 中途被杀，系统按"取消"处理，不会留下残缺 Widget。
         setResult(RESULT_CANCELED)
@@ -55,6 +56,8 @@ class ConfigActivity : Activity() {
             )
         }
     }
+
+    override fun onResume() { super.onResume(); AppThemeManager.apply(this) }
 
     override fun onRequestPermissionsResult(
         requestCode: Int,

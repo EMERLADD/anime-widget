@@ -134,3 +134,52 @@ def test_weather_config_json(text, lat=31.27, lon=121.50):
     except Exception as e:
         result = {"success": False, "error": str(e)}
     return json.dumps(result, ensure_ascii=False)
+
+
+def get_layout_config_json():
+    from layout_service import get_layout_json
+    return get_layout_json()
+
+
+def get_layout_geometry_json():
+    from layout_service import get_layout_geometry_json as get_geometry
+    return get_geometry()
+
+
+def reset_layout_config_json():
+    from layout_service import reset_layout_json
+    return reset_layout_json()
+
+
+def update_layout_positions_json(text):
+    from layout_service import update_positions_json
+    return update_positions_json(text)
+
+
+def get_character_theme_json():
+    from theme_engine import load_theme
+    return json.dumps(load_theme(), ensure_ascii=False)
+
+def import_character_png(path):
+    from theme_engine import import_character
+    return json.dumps(import_character(str(path)), ensure_ascii=False)
+
+def restore_default_character():
+    from theme_engine import restore_default_character as restore
+    return json.dumps(restore(), ensure_ascii=False)
+
+def get_theme_extraction_json():
+    from theme_engine import load_extraction_config
+    return json.dumps(load_extraction_config(), ensure_ascii=False)
+
+def save_theme_extraction_json(text):
+    from theme_engine import save_extraction_config
+    return json.dumps(save_extraction_config(json.loads(str(text))), ensure_ascii=False)
+
+def get_theme_preferences_json():
+    from theme_engine import get_theme_preferences
+    return json.dumps(get_theme_preferences(), ensure_ascii=False)
+
+def save_theme_preferences_json(text):
+    from theme_engine import save_theme_preferences
+    return json.dumps(save_theme_preferences(json.loads(str(text))), ensure_ascii=False)

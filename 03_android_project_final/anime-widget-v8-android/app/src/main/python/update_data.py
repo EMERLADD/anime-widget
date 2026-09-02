@@ -13,7 +13,7 @@ WEATHER_CACHE = CACHE / "weather.json"
 LOCATION_CACHE = CACHE / "location.json"
 
 DEFAULT_LATITUDE, DEFAULT_LONGITUDE = 31.27, 121.50
-DEFAULT_LOCATION = "上海 · 虹口"
+DEFAULT_LOCATION = "位置获取中"
 
 def read_json(path):
     try:
@@ -71,13 +71,15 @@ def resolve_location():
 
     if pos:
         lat, lon, accuracy = pos
-        label = reverse_geocode(lat, lon) or (old or {}).get("location") or DEFAULT_LOCATION
+        label = reverse_geocode(lat, lon) or DEFAULT_LOCATION
         data = {
             "latitude": lat,
             "longitude": lon,
             "location": label,
             "accuracy": accuracy,
-            "updated": datetime.now().isoformat()
+            "updated": datetime.now().isoformat(),
+            "source": "termux-location",
+            "is_default": False,
         }
         write_json(LOCATION_CACHE, data)
         print(f"当前位置: {label} | {lat:.5f}, {lon:.5f}")
@@ -88,13 +90,17 @@ def resolve_location():
         return old
 
     print("定位失败且无缓存，使用默认位置:", DEFAULT_LOCATION)
-    return {
+    data = {
         "latitude": DEFAULT_LATITUDE,
         "longitude": DEFAULT_LONGITUDE,
         "location": DEFAULT_LOCATION,
         "accuracy": None,
-        "updated": datetime.now().isoformat()
+        "updated": datetime.now().isoformat(),
+        "source": "default",
+        "is_default": True,
     }
+    write_json(LOCATION_CACHE, data)
+    return data
 
 def fetch_weather(loc):
     from weather_service import fetch_weather as provider_fetch
@@ -127,7 +133,7 @@ def refresh_for_location(lat=None, lon=None, label=None):
         elif cached_label and not moved_far:
             location_name = cached_label
         else:
-            location_name = reverse_geocode(lat, lon) or cached_label or DEFAULT_LOCATION
+            location_name = reverse_geocode(lat, lon) or DEFAULT_LOCATION
 
         loc = {
             "latitude": float(lat),
@@ -135,6 +141,8 @@ def refresh_for_location(lat=None, lon=None, label=None):
             "location": location_name,
             "accuracy": None,
             "updated": datetime.now().isoformat(),
+            "source": "android",
+            "is_default": False,
         }
     elif old_location:
         loc = old_location
@@ -145,6 +153,8 @@ def refresh_for_location(lat=None, lon=None, label=None):
             "location": DEFAULT_LOCATION,
             "accuracy": None,
             "updated": datetime.now().isoformat(),
+            "source": "default",
+            "is_default": True,
         }
 
     write_json(LOCATION_CACHE, loc)

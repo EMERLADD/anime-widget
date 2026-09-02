@@ -47,6 +47,7 @@ class WeatherSettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(buildUi())
+        AppThemeManager.apply(this)
         scope.launch {
             try {
                 val raw = withContext(Dispatchers.IO) {
@@ -256,6 +257,8 @@ class WeatherSettingsActivity : Activity() {
     }
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
+
+    override fun onResume() { super.onResume(); AppThemeManager.apply(this) }
 
     override fun onDestroy() {
         scope.cancel()

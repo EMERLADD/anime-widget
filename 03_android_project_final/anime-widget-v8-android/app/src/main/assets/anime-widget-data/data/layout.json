@@ -1,27 +1,43 @@
 {
   "date": {
     "x": 48,
-    "y": 42
+    "y": 42,
+    "visible": 1
   },
   "clock": {
     "x": 48,
-    "y": 118
+    "y": 118,
+    "scale": 100,
+    "visible": 1
   },
   "location": {
     "x": 50,
-    "y": 315
+    "y": 315,
+    "visible": 1
   },
   "weather": {
     "x": 48,
-    "y": 425
+    "y": 425,
+    "visible": 1
   },
   "forecast": {
     "x": 48,
-    "y": 655
+    "y": 655,
+    "visible": 1
+  },
+  "refresh": {
+    "x": 976,
+    "y": 8,
+    "scale": 100,
+    "visible": 1
   },
   "maid": {
+    "x": 382,
+    "y": 194,
     "right": 18,
-    "bottom": 6
+    "bottom": 6,
+    "scale": 100,
+    "visible": 1
   },
   "bubble": {
     "x1": 500,
@@ -31,6 +47,7 @@
     "tail_x": 890,
     "tail_y": 435,
     "radius": 42,
-    "padding": 30
+    "padding": 30,
+    "visible": 1
   }
 }

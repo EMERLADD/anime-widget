@@ -30,6 +30,14 @@
             android:name=".WeatherSettingsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".LayoutEditorActivity"
+            android:exported="false" />
+
+        <activity android:name=".CharacterSettingsActivity" android:exported="false" />
+
+        <activity android:name=".AboutActivity" android:exported="false" />
+
         <receiver
             android:name=".AnimeMaidWidget"
             android:exported="true">

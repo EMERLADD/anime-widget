@@ -27,8 +27,12 @@ class WidgetRefreshWorker(
         }
 
         try {
-            val location = if (mode == WidgetWorkScheduler.MODE_RENDER) null
-                else WidgetRefreshController.getCurrentOrLastLocation(applicationContext)
+            val location = when (mode) {
+                WidgetWorkScheduler.MODE_RENDER -> null
+                WidgetWorkScheduler.MODE_MANUAL ->
+                    WidgetRefreshController.getCurrentOrLastLocation(applicationContext)
+                else -> WidgetRefreshController.getLocationForAutoRefresh(applicationContext)
+            }
             val pngPath = withContext(Dispatchers.IO) {
                 when (mode) {
                     WidgetWorkScheduler.MODE_RENDER -> PythonBridge.renderWidgetPng(applicationContext)

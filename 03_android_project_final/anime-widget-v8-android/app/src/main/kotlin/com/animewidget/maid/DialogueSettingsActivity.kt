@@ -58,6 +58,7 @@ class DialogueSettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(buildUi())
+        AppThemeManager.apply(this)
         loadDialogueConfig()
     }
 
@@ -550,6 +551,8 @@ class DialogueSettingsActivity : Activity() {
     }
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
+
+    override fun onResume() { super.onResume(); AppThemeManager.apply(this) }
 
     override fun onDestroy() {
         scope.cancel()

@@ -1,4 +1,11 @@
-def rounded(draw, box, r=24, fill=(25,90,170,145), outline=(225,245,255,120), width=2):
+from widget_theme import theme_color
+
+
+def rounded(draw, box, r=24, fill=None, outline=None, width=2):
+    if fill is None:
+        fill = theme_color("pill_background", (25, 90, 170, 145))
+    if outline is None:
+        outline = theme_color("border", (225, 245, 255, 120))
     draw.rounded_rectangle(box, radius=r, fill=fill, outline=outline, width=width)
 
 def centered_text(draw, box, text, fnt, fill="white", stroke_width=0, stroke_fill=None):
