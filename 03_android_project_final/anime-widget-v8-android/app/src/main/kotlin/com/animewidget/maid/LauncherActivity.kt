@@ -6,12 +6,16 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Build
+import android.provider.Settings
+import android.net.Uri
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +26,7 @@ import kotlinx.coroutines.launch
 
 /** Main settings menu. Feature pages stay independent and easier to extend. */
 class LauncherActivity : Activity() {
+    private val requestForegroundLocation = 2001
     private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var locationWarmupJob: Job? = null
 
@@ -95,6 +100,9 @@ class LauncherActivity : Activity() {
             addView(menuButton("天气 API", "天气源、API Key、自定义 JSON 翻译") {
                 startActivity(Intent(this@LauncherActivity, WeatherSettingsActivity::class.java))
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78)))
+            addView(menuButton("定位权限", "授权精确位置与后台位置，供半小时强制刷新") {
+                requestWidgetLocationPermissions()
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78)))
 
             addView(TextView(context).apply {
                 text = "外观资源"
@@ -118,5 +126,55 @@ class LauncherActivity : Activity() {
                 startActivity(Intent(this@LauncherActivity, AboutActivity::class.java))
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78)))
         })
+    }
+
+    private fun requestWidgetLocationPermissions() {
+        val fine = ActivityCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!fine) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                requestForegroundLocation
+            )
+            return
+        }
+        requestBackgroundLocation()
+    }
+
+    private fun requestBackgroundLocation() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            Toast.makeText(this, "定位权限已授权", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (ActivityCompat.checkSelfPermission(
+                this, Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            Toast.makeText(this, "前台与后台定位均已授权", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION), 2002
+            )
+        } else {
+            Toast.makeText(this, "请在权限中把位置设为“始终允许”", Toast.LENGTH_LONG).show()
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", packageName, null)
+            })
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == requestForegroundLocation &&
+            grantResults.any { it == PackageManager.PERMISSION_GRANTED }
+        ) requestBackgroundLocation()
     }
 }

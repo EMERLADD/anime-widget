@@ -13,6 +13,7 @@ CACHE.mkdir(parents=True, exist_ok=True)
 OUTPUT = CACHE / "widget.png"
 WEATHER_CACHE = CACHE / "weather.json"
 LOCATION_CACHE = CACHE / "location.json"
+SNAPSHOT_CACHE = CACHE / "widget_snapshot.json"
 CHARACTER = ASSETS / "character_only.png"
 LEGACY_CHARACTER = ASSETS / "character.png"
 LAYOUT_FILE = BASE / "data" / "layout.json"
@@ -77,15 +78,49 @@ def weather_name(c):
             71:"小雪",73:"中雪",75:"大雪",77:"米雪",80:"阵雨",81:"较强阵雨",82:"强阵雨",
             85:"阵雪",86:"强阵雪",95:"雷雨",96:"雷雨伴冰雹",99:"强雷雨伴冰雹"}.get(c,"天气未知")
 
-def read_cache():
+def _snapshot():
     try:
-        return json.loads(WEATHER_CACHE.read_text(encoding="utf-8"))
+        data = json.loads(SNAPSHOT_CACHE.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return None
+        location, weather = data.get("location"), data.get("weather")
+        if not isinstance(location, dict) or not isinstance(weather, dict):
+            return None
+        generation = data.get("generation")
+        if generation and (location.get("generation") != generation or
+                           weather.get("generation") != generation):
+            return None
+        return data
     except Exception:
         return None
 
+
+def _read_dict(path):
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _module(name, path):
+    snapshot = _snapshot()
+    standalone = _read_dict(path)
+    if not snapshot:
+        return standalone
+    snapshot_module = snapshot[name]
+    standalone_generation = (standalone or {}).get("generation")
+    if standalone_generation and standalone_generation != snapshot.get("generation"):
+        return standalone
+    return snapshot_module
+
+
+def read_cache():
+    return _module("weather", WEATHER_CACHE)
+
 def get_location(weather=None):
     try:
-        location = json.loads(LOCATION_CACHE.read_text(encoding="utf-8"))
+        location = _module("location", LOCATION_CACHE) or {}
         label = location.get("location")
         if label and (
             label != LEGACY_DEFAULT_LOCATION or location.get("is_default") is False

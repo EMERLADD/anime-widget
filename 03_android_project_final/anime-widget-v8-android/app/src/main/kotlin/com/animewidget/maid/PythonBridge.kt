@@ -4,9 +4,16 @@ import android.content.Context
 import android.location.Location
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
+import org.json.JSONObject
 
 /** Serialized Kotlin/Python bridge for the single Chaquopy interpreter and shared cache files. */
 object PythonBridge {
+    data class RefreshResult(
+        val refreshSuccess: Boolean,
+        val pngPath: String?,
+        val error: String
+    )
+
     private fun ensureStarted(context: Context) {
         System.setProperty("java.io.tmpdir", context.cacheDir.absolutePath)
         val homeDir = AssetInstaller.ensureInstalled(context)
@@ -25,27 +32,41 @@ object PythonBridge {
     }
 
     @Synchronized
-    fun manualRefreshAndRenderWidgetPng(context: Context, location: Location?): String? {
+    fun manualRefreshAndRenderWidget(context: Context, location: Location?): RefreshResult {
         ensureStarted(context)
-        val bridge = Python.getInstance().getModule("bridge")
-        val result = if (location != null) {
-            bridge.callAttr("manual_refresh_and_render", location.latitude, location.longitude, null)
-        } else {
-            bridge.callAttr("manual_refresh_and_render")
-        }
-        return result.toString().ifBlank { null }
+        return refreshResult(context, "manual_refresh_and_render_result_json", location)
     }
 
     @Synchronized
-    fun fullRefreshAndRenderWidgetPng(context: Context, location: Location?): String? {
+    fun fullRefreshAndRenderWidget(context: Context, location: Location?): RefreshResult {
         ensureStarted(context)
+        return refreshResult(context, "full_refresh_and_render_result_json", location)
+    }
+
+    private fun refreshResult(context: Context, function: String, location: Location?): RefreshResult {
         val bridge = Python.getInstance().getModule("bridge")
-        val result = if (location != null) {
-            bridge.callAttr("full_refresh_and_render", location.latitude, location.longitude, null)
+        val credentials = AmapCredentialStore.load(context)
+        val raw = if (location != null) {
+            bridge.callAttr(
+                function,
+                location.latitude,
+                location.longitude,
+                null,
+                if (location.hasAccuracy()) location.accuracy.toDouble() else null,
+                location.provider.orEmpty(),
+                location.time,
+                credentials?.apiKey.orEmpty(),
+                credentials?.privateKey.orEmpty()
+            )
         } else {
-            bridge.callAttr("full_refresh_and_render")
-        }
-        return result.toString().ifBlank { null }
+            bridge.callAttr(function)
+        }.toString()
+        val result = JSONObject(raw)
+        return RefreshResult(
+            refreshSuccess = result.optBoolean("refresh_success", false),
+            pngPath = result.optString("png_path").ifBlank { null },
+            error = result.optString("error")
+        )
     }
 
     @Synchronized
@@ -84,10 +105,31 @@ object PythonBridge {
     }
 
     @Synchronized
-    fun testWeatherConfigJson(context: Context, json: String): String {
+    fun testWeatherConfigJson(
+        context: Context,
+        json: String,
+        credentials: AmapCredentialStore.Credentials? = AmapCredentialStore.load(context)
+    ): String {
         ensureStarted(context)
         return Python.getInstance().getModule("bridge")
-            .callAttr("test_weather_config_json", json).toString()
+            .callAttr(
+                "test_weather_config_json", json, 31.27, 121.50,
+                credentials?.apiKey.orEmpty(), credentials?.privateKey.orEmpty()
+            ).toString()
+    }
+
+    @Synchronized
+    fun testAmapGeocodingJson(
+        context: Context,
+        latitude: Double,
+        longitude: Double,
+        credentials: AmapCredentialStore.Credentials
+    ): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge").callAttr(
+            "test_amap_geocoding_json", latitude, longitude,
+            credentials.apiKey, credentials.privateKey
+        ).toString()
     }
 
     @Synchronized

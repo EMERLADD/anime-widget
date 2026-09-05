@@ -78,25 +78,62 @@ def _android_refresh(lat=None, lon=None, label=None):
     return update_data.refresh_for_location(lat, lon, label)
 
 
+def _refresh_result(manual, lat=None, lon=None, label=None, accuracy=None,
+                    provider="android", acquired_at=None, amap_key="",
+                    amap_private_key=""):
+    result = {"refresh_success": False, "png_path": "", "error": ""}
+    try:
+        import update_data
+        importlib.reload(update_data)
+        update_data.refresh_for_location(
+            lat, lon, label, accuracy, provider, acquired_at,
+            amap_key, amap_private_key
+        )
+        result["refresh_success"] = True
+    except Exception as error:
+        result["error"] = str(error)
+
+    if manual:
+        from refresh_state import advance_dialogue_sequence
+        advance_dialogue_sequence()
+    try:
+        result["png_path"] = render_widget_png()
+    except Exception as error:
+        if not result["error"]:
+            result["error"] = str(error)
+    return json.dumps(result, ensure_ascii=False)
+
+
+def full_refresh_and_render_result_json(lat=None, lon=None, label=None,
+                                        accuracy=None, provider="android",
+                                        acquired_at=None, amap_key="",
+                                        amap_private_key=""):
+    return _refresh_result(False, lat, lon, label, accuracy, provider, acquired_at,
+                           amap_key, amap_private_key)
+
+
+def manual_refresh_and_render_result_json(lat=None, lon=None, label=None,
+                                          accuracy=None, provider="android",
+                                          acquired_at=None, amap_key="",
+                                          amap_private_key=""):
+    return _refresh_result(True, lat, lon, label, accuracy, provider, acquired_at,
+                           amap_key, amap_private_key)
+
+
 def full_refresh_and_render(lat=None, lon=None, label=None):
     """Initial Android refresh followed by one final render."""
-    try:
-        _android_refresh(lat, lon, label)
-    except Exception as e:
-        print("Android 初始刷新异常（将使用缓存或占位数据）:", e)
-    return render_widget_png()
+    result = json.loads(full_refresh_and_render_result_json(lat, lon, label))
+    if not result["refresh_success"]:
+        raise RuntimeError(result["error"] or "刷新失败")
+    return result["png_path"]
 
 
 def manual_refresh_and_render(lat=None, lon=None, label=None):
     """Refresh location/weather and dialogue, then render exactly one final frame."""
-    try:
-        _android_refresh(lat, lon, label)
-    except Exception as e:
-        print("手动刷新天气异常（将使用缓存）:", e)
-
-    from refresh_state import advance_dialogue_sequence
-    advance_dialogue_sequence()
-    return render_widget_png()
+    result = json.loads(manual_refresh_and_render_result_json(lat, lon, label))
+    if not result["refresh_success"]:
+        raise RuntimeError(result["error"] or "刷新失败")
+    return result["png_path"]
 
 
 def get_dialogue_config_json():
@@ -127,12 +164,24 @@ def save_weather_config_json(text):
     return json.dumps(save_config(json.loads(str(text))), ensure_ascii=False)
 
 
-def test_weather_config_json(text, lat=31.27, lon=121.50):
+def test_weather_config_json(text, lat=31.27, lon=121.50,
+                             amap_key="", amap_private_key=""):
     try:
         from weather_service import test_config
-        result = test_config(json.loads(str(text)), float(lat), float(lon))
+        result = test_config(json.loads(str(text)), float(lat), float(lon),
+                             amap_key, amap_private_key)
     except Exception as e:
         result = {"success": False, "error": str(e)}
+    return json.dumps(result, ensure_ascii=False)
+
+
+def test_amap_geocoding_json(lat, lon, amap_key, amap_private_key):
+    try:
+        from geocoding_service import reverse_geocode
+        place = reverse_geocode(float(lat), float(lon), amap_key, amap_private_key)
+        result = {"success": True, "location": place["location"]}
+    except Exception as error:
+        result = {"success": False, "error": str(error)}
     return json.dumps(result, ensure_ascii=False)
 
 

@@ -43,7 +43,6 @@ chaquopy {
         pip {
             install 'pillow'
             install 'requests'
-            install 'geopy'
         }
     }
 }

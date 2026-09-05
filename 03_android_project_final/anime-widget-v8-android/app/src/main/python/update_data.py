@@ -1,190 +1,155 @@
-from datetime import datetime
+"""Independent location/weather refresh with an atomic combined snapshot."""
+from datetime import datetime, timezone
 from pathlib import Path
 import json
-import math
+import os
 import subprocess
-import requests
+import uuid
+
+from config_store import atomic_write_json
 
 BASE = Path.home() / "anime-widget"
 CACHE = BASE / "cache"
 CACHE.mkdir(parents=True, exist_ok=True)
-
 WEATHER_CACHE = CACHE / "weather.json"
 LOCATION_CACHE = CACHE / "location.json"
+SNAPSHOT_CACHE = CACHE / "widget_snapshot.json"
+REFRESH_STATUS = CACHE / "refresh_status.json"
 
-DEFAULT_LATITUDE, DEFAULT_LONGITUDE = 31.27, 121.50
-DEFAULT_LOCATION = "位置获取中"
 
 def read_json(path):
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
     except Exception:
         return None
 
+
 def write_json(path, data):
-    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    atomic_write_json(path, data)
+
+
+def _now():
+    return datetime.now(timezone.utc).isoformat()
+
 
 def get_device_location():
     try:
-        p = subprocess.run(
+        process = subprocess.run(
             ["termux-location", "-p", "network", "-r", "once"],
-            capture_output=True, text=True, timeout=15
+            capture_output=True, text=True, timeout=15,
         )
-        if p.returncode != 0:
-            raise RuntimeError(p.stderr.strip() or f"exit={p.returncode}")
-        d = json.loads(p.stdout)
-        return float(d["latitude"]), float(d["longitude"]), d.get("accuracy")
-    except Exception as e:
-        print("定位失败:", e)
+        if process.returncode != 0:
+            raise RuntimeError(process.stderr.strip() or f"exit={process.returncode}")
+        data = json.loads(process.stdout)
+        return float(data["latitude"]), float(data["longitude"]), data.get("accuracy")
+    except Exception as error:
+        print("定位失败:", error)
         return None
 
-def reverse_geocode(lat, lon):
-    try:
-        from geopy.geocoders import Nominatim
-        g = Nominatim(user_agent="anime-weather-widget/1.0", timeout=8)
-        r = g.reverse((lat, lon), language="zh-CN", addressdetails=True, zoom=14)
-        a = r.raw.get("address", {}) if r else {}
 
-        city = (a.get("city") or a.get("municipality") or a.get("town")
-                or a.get("state") or "")
-        district = (a.get("city_district") or a.get("district")
-                    or a.get("borough") or a.get("suburb")
-                    or a.get("county") or "")
+def reverse_geocode(lat, lon, amap_key="", amap_private_key=""):
+    from geocoding_service import reverse_geocode as amap_reverse
+    return amap_reverse(lat, lon, amap_key, amap_private_key)["location"]
 
-        for s in ("特别行政区", "市"):
-            if city.endswith(s):
-                city = city[:-len(s)]
-        for s in ("自治县", "新区", "区", "县"):
-            if district.endswith(s):
-                district = district[:-len(s)]
 
-        if city and district and city != district:
-            return f"{city} · {district}"
-        return city or district or None
-    except Exception as e:
-        print("逆地理编码失败:", e)
-        return None
-
-def resolve_location():
-    old = read_json(LOCATION_CACHE)
-    pos = get_device_location()
-
-    if pos:
-        lat, lon, accuracy = pos
-        label = reverse_geocode(lat, lon) or DEFAULT_LOCATION
-        data = {
-            "latitude": lat,
-            "longitude": lon,
-            "location": label,
-            "accuracy": accuracy,
-            "updated": datetime.now().isoformat(),
-            "source": "termux-location",
-            "is_default": False,
-        }
-        write_json(LOCATION_CACHE, data)
-        print(f"当前位置: {label} | {lat:.5f}, {lon:.5f}")
-        return data
-
-    if old:
-        print("定位失败，沿用上次位置:", old.get("location", DEFAULT_LOCATION))
-        return old
-
-    print("定位失败且无缓存，使用默认位置:", DEFAULT_LOCATION)
-    data = {
-        "latitude": DEFAULT_LATITUDE,
-        "longitude": DEFAULT_LONGITUDE,
-        "location": DEFAULT_LOCATION,
-        "accuracy": None,
-        "updated": datetime.now().isoformat(),
-        "source": "default",
-        "is_default": True,
-    }
-    write_json(LOCATION_CACHE, data)
-    return data
-
-def fetch_weather(loc):
+def fetch_weather(location, amap_key="", amap_private_key=""):
     from weather_service import fetch_weather as provider_fetch
-    return provider_fetch(loc)
-
-def _distance_meters(lat1, lon1, lat2, lon2):
-    radius = 6_371_000.0
-    p1, p2 = math.radians(float(lat1)), math.radians(float(lat2))
-    dp = math.radians(float(lat2) - float(lat1))
-    dl = math.radians(float(lon2) - float(lon1))
-    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return 2 * radius * math.asin(math.sqrt(a))
+    return provider_fetch(location, amap_key=amap_key, amap_private_key=amap_private_key)
 
 
-def refresh_for_location(lat=None, lon=None, label=None):
-    """Android path: use supplied/cached coordinates and never call termux-location."""
-    old_location = read_json(LOCATION_CACHE) or {}
-    if lat is not None and lon is not None:
-        moved_far = True
-        try:
-            moved_far = _distance_meters(
-                old_location["latitude"], old_location["longitude"], lat, lon
-            ) >= 1_000
-        except Exception:
-            pass
+def _safe_error(error, secrets=()):
+    text = str(error)
+    for secret in secrets:
+        if secret:
+            text = text.replace(str(secret), "***")
+    return text[:500]
 
-        cached_label = old_location.get("location")
-        if label:
-            location_name = label
-        elif cached_label and not moved_far:
-            location_name = cached_label
-        else:
-            location_name = reverse_geocode(lat, lon) or DEFAULT_LOCATION
 
-        loc = {
-            "latitude": float(lat),
-            "longitude": float(lon),
-            "location": location_name,
-            "accuracy": None,
-            "updated": datetime.now().isoformat(),
-            "source": "android",
-            "is_default": False,
-        }
-    elif old_location:
-        loc = old_location
-    else:
-        loc = {
-            "latitude": DEFAULT_LATITUDE,
-            "longitude": DEFAULT_LONGITUDE,
-            "location": DEFAULT_LOCATION,
-            "accuracy": None,
-            "updated": datetime.now().isoformat(),
-            "source": "default",
-            "is_default": True,
-        }
+def _write_status(success, generation, stage, errors=None, modules=None):
+    status = {"success": bool(success), "generation": generation,
+              "stage": stage, "updated": _now(), "modules": modules or {}}
+    if errors:
+        status["error"] = "；".join(errors)[:1000]
+    write_json(REFRESH_STATUS, status)
 
-    write_json(LOCATION_CACHE, loc)
-    old_weather = read_json(WEATHER_CACHE)
+
+def refresh_for_location(lat=None, lon=None, label=None, accuracy=None,
+                         provider="android", acquired_at=None,
+                         amap_key="", amap_private_key=""):
+    """Refresh location and weather independently; publish a snapshot if both succeed."""
+    generation = uuid.uuid4().hex
+    secrets = (amap_key, amap_private_key)
+    if lat is None or lon is None:
+        error = "本轮强制刷新未取得当前坐标"
+        _write_status(False, generation, "location", [error])
+        raise RuntimeError(error)
+    lat, lon = float(lat), float(lon)
+    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+        error = "定位坐标超出有效范围"
+        _write_status(False, generation, "location", [error])
+        raise ValueError(error)
+
+    base_location = {
+        "generation": generation, "latitude": lat, "longitude": lon,
+        "accuracy": accuracy, "provider": str(provider or "android"),
+        "acquired_at": acquired_at or _now(), "updated": _now(),
+        "source": "android", "is_default": False,
+    }
+    location = None
+    weather = None
+    errors = []
+    modules = {"location": False, "weather": False, "snapshot": False}
+
     try:
-        weather = fetch_weather(loc)
+        from geocoding_service import reverse_geocode as amap_reverse
+        place = amap_reverse(lat, lon, amap_key, amap_private_key)
+        location = dict(base_location)
+        location.update({"location": str(label or place["location"]), "place": place})
+        write_json(LOCATION_CACHE, location)
+        modules["location"] = True
+    except Exception as error:
+        errors.append("地名解析：" + _safe_error(error, secrets))
+
+    weather_input = location or {
+        **base_location, "location": "位置解析失败", "place": {}
+    }
+    try:
+        weather = fetch_weather(weather_input, amap_key, amap_private_key)
+        if not isinstance(weather, dict):
+            raise RuntimeError("天气服务未返回有效对象")
+        weather = dict(weather)
+        weather.update({"generation": generation, "latitude": lat, "longitude": lon,
+                        "updated": weather.get("updated") or _now()})
         write_json(WEATHER_CACHE, weather)
-        print("Android 天气数据更新成功:", weather["location"])
+        modules["weather"] = True
+    except Exception as error:
+        errors.append("天气刷新：" + _safe_error(error, secrets))
+
+    if location is not None and weather is not None:
+        snapshot = {"schema_version": 1, "generation": generation,
+                    "location": location, "weather": weather, "published_at": _now()}
+        write_json(SNAPSHOT_CACHE, snapshot)
+        modules["snapshot"] = True
+        _write_status(True, generation, "complete", modules=modules)
         return weather
-    except Exception as e:
-        print("Android 天气更新失败:", e)
-        if old_weather:
-            print("保留旧天气缓存")
-            return old_weather
-        raise
+
+    _write_status(False, generation, "partial" if any(modules.values()) else "failed",
+                  errors, modules)
+    raise RuntimeError("；".join(errors) or "刷新失败")
 
 
 def main():
-    loc = resolve_location()
-    old_weather = read_json(WEATHER_CACHE)
-    try:
-        weather = fetch_weather(loc)
-        write_json(WEATHER_CACHE, weather)
-        print("天气数据更新成功:", weather["location"])
-    except Exception as e:
-        print("天气更新失败:", e)
-        if old_weather:
-            print("保留旧天气缓存")
-        else:
-            raise
+    position = get_device_location()
+    if not position:
+        raise RuntimeError("无法取得当前坐标")
+    lat, lon, accuracy = position
+    return refresh_for_location(
+        lat, lon, accuracy=accuracy, provider="termux-location",
+        amap_key=os.environ.get("AMAP_WEB_KEY", ""),
+        amap_private_key=os.environ.get("AMAP_PRIVATE_KEY", ""),
+    )
+
 
 if __name__ == "__main__":
     main()

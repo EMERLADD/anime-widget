@@ -65,7 +65,7 @@ class ConfigActivity : Activity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        // 无论是否授权都完成配置：Python 侧有默认坐标兜底，不阻塞 Widget 使用
+        // 无论是否授权都完成配置；未授权时强制刷新会明确失败。
         finishOk()
     }
 

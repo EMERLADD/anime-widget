@@ -33,19 +33,27 @@ class WidgetRefreshWorker(
                     WidgetRefreshController.getCurrentOrLastLocation(applicationContext)
                 else -> WidgetRefreshController.getLocationForAutoRefresh(applicationContext)
             }
-            val pngPath = withContext(Dispatchers.IO) {
+            val refreshResult = withContext(Dispatchers.IO) {
                 when (mode) {
-                    WidgetWorkScheduler.MODE_RENDER -> PythonBridge.renderWidgetPng(applicationContext)
-                    WidgetWorkScheduler.MODE_MANUAL -> PythonBridge.manualRefreshAndRenderWidgetPng(applicationContext, location)
-                    else -> PythonBridge.fullRefreshAndRenderWidgetPng(applicationContext, location)
+                    WidgetWorkScheduler.MODE_RENDER -> PythonBridge.RefreshResult(
+                        true, PythonBridge.renderWidgetPng(applicationContext), ""
+                    )
+                    WidgetWorkScheduler.MODE_MANUAL ->
+                        PythonBridge.manualRefreshAndRenderWidget(applicationContext, location)
+                    else -> PythonBridge.fullRefreshAndRenderWidget(applicationContext, location)
                 }
-            } ?: throw IllegalStateException("Python renderer returned no image")
+            }
+            val pngPath = refreshResult.pngPath
+                ?: throw IllegalStateException("Python renderer returned no image")
 
             val keepManualSpinner = mode != WidgetWorkScheduler.MODE_MANUAL &&
                 RefreshStateStore.isRefreshing(applicationContext)
             WidgetRefreshController.publishRenderedImageToAll(
                 applicationContext, pngPath, refreshing = keepManualSpinner
             )
+            if (!refreshResult.refreshSuccess) {
+                throw IllegalStateException(refreshResult.error.ifBlank { "数据强制刷新失败" })
+            }
             Result.success()
         } catch (_: Exception) {
             if (mode == WidgetWorkScheduler.MODE_MANUAL ||

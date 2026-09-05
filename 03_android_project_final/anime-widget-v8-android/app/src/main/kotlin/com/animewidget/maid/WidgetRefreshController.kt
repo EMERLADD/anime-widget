@@ -34,10 +34,8 @@ import kotlin.math.abs
 
 /** Native Widget publication plus short Android location acquisition. */
 object WidgetRefreshController {
-    private const val FRESH_LOCATION_MAX_AGE_MS = 60_000L
     private const val LOCATION_TIME_TIE_MS = 10_000L
     private const val CURRENT_LOCATION_TIMEOUT_MS = 10_000L
-    private const val SAVED_LOCATION_MAX_AUTO_AGE_MS = 12L * 60L * 60L * 1_000L
     private const val LOCATION_PREFS = "widget_location_cache"
     private const val KEY_LATITUDE = "latitude"
     private const val KEY_LONGITUDE = "longitude"
@@ -180,20 +178,19 @@ object WidgetRefreshController {
     }
 
     suspend fun getCurrentOrLastLocation(context: Context): Location? {
-        val savedLocation = getSavedLocation(context)
         val fine = ActivityCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         val coarse = ActivityCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-        if (!fine && !coarse) return savedLocation
+        if (!fine && !coarse) return null
 
         val manager = try {
             context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         } catch (_: RuntimeException) {
             null
-        } ?: return savedLocation
+        } ?: return null
         val enabledProviders = listOf(
             LocationManager.GPS_PROVIDER,
             LocationManager.NETWORK_PROVIDER,
@@ -205,19 +202,6 @@ object WidgetRefreshController {
                 false
             }
         }
-        val cachedLocations = enabledProviders.mapNotNull { provider ->
-            try {
-                manager.getLastKnownLocation(provider)
-            } catch (_: RuntimeException) {
-                null
-            }
-        }
-        bestLocation(cachedLocations.filter { locationAgeMs(it) <= FRESH_LOCATION_MAX_AGE_MS })
-            ?.let {
-                saveLocation(context, it)
-                return it
-            }
-
         val activeProviders = enabledProviders.filter {
             it == LocationManager.GPS_PROVIDER || it == LocationManager.NETWORK_PROVIDER
         }
@@ -230,15 +214,13 @@ object WidgetRefreshController {
                 }
             }.awaitAll().filterNotNull()
         }
-        return bestLocation(cachedLocations + currentLocations)?.also {
+        return bestLocation(currentLocations)?.also {
             saveLocation(context, it)
-        } ?: savedLocation
+        }
     }
 
     suspend fun getLocationForAutoRefresh(context: Context): Location? {
-        val saved = getSavedLocation(context)
-        if (saved != null && locationAgeMs(saved) <= SAVED_LOCATION_MAX_AUTO_AGE_MS) return saved
-        return getCurrentOrLastLocation(context) ?: saved
+        return getCurrentOrLastLocation(context)
     }
 
     fun getSavedLocation(context: Context): Location? {
@@ -271,7 +253,7 @@ object WidgetRefreshController {
             .putLong(KEY_LONGITUDE, longitude.toBits())
             .putFloat(KEY_ACCURACY, locationAccuracy(location))
             .putString(KEY_PROVIDER, location.provider.orEmpty())
-            .putLong(KEY_SAVED_AT, System.currentTimeMillis())
+            .putLong(KEY_SAVED_AT, location.time.takeIf { it > 0L } ?: System.currentTimeMillis())
             .apply()
     }
 
