@@ -60,6 +60,17 @@ object WidgetRefreshController {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.refresh_image, pendingIntent)
+        val questionIntent = Intent(context, AiQuestionActivity::class.java).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        val questionPendingIntent = PendingIntent.getActivity(
+            context,
+            20_000 + widgetId,
+            questionIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        views.setOnClickPendingIntent(R.id.ai_input_touch, questionPendingIntent)
         views.setImageViewResource(
             R.id.refresh_image,
             if (refreshing) R.drawable.waiting_icon else R.drawable.refresh_icon
@@ -124,6 +135,7 @@ object WidgetRefreshController {
 
         place(R.id.widget_clock, "clock", WidgetModuleSpecs.clock, 120f, 45f)
         place(R.id.refresh_image, "refresh", WidgetModuleSpecs.refresh, 44f, 44f)
+        place(R.id.ai_input_touch, "ai_input", WidgetModuleSpecs.aiInput, 108f, 18f)
         views.setTextViewTextSize(
             R.id.widget_clock,
             TypedValue.COMPLEX_UNIT_PX,

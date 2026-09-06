@@ -44,4 +44,13 @@
         android:scaleType="fitCenter"
         android:contentDescription="@string/refresh_weather" />
 
+    <!-- Transparent native hit target aligned with the Pillow-rendered AI input pill. -->
+    <TextView
+        android:id="@+id/ai_input_touch"
+        android:layout_width="108dp"
+        android:layout_height="18dp"
+        android:layout_gravity="top|start"
+        android:background="@android:color/transparent"
+        android:contentDescription="点击以询问天气意见" />
+
 </FrameLayout>

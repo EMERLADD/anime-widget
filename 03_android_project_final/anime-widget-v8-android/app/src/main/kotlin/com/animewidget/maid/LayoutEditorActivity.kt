@@ -58,9 +58,10 @@ class LayoutEditorActivity : Activity() {
         EditorModule("location", "地点", 0, 0, 340, 95),
         EditorModule("weather", "天气", 0, 0, 562, 225),
         EditorModule("forecast", "预报", 0, 0, 662, 118),
-        EditorModule("bubble", "对话框", 0, 0, 450, 314),
+        EditorModule("bubble", "角色对话框", 0, 0, 450, 314),
         EditorModule("character", "角色", 0, 0, 800, 600),
-        EditorModule("refresh", "刷新", 0, 0, WidgetModuleSpecs.refresh.width, WidgetModuleSpecs.refresh.height)
+        EditorModule("refresh", "刷新", 0, 0, WidgetModuleSpecs.refresh.width, WidgetModuleSpecs.refresh.height),
+        EditorModule("ai_input", "用户输入框", 0, 0, WidgetModuleSpecs.aiInput.width, WidgetModuleSpecs.aiInput.height)
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -155,10 +156,15 @@ class LayoutEditorActivity : Activity() {
                     val button = Button(context).apply {
                         text = module.label
                         isAllCaps = false
+                        minHeight = dp(50)
+                        setPadding(dp(12), dp(8), dp(12), dp(8))
                         setOnClickListener { selectModule(module.id) }
                     }
                     moduleButtons[module.id] = button
-                    moduleRow.addView(button, LinearLayout.LayoutParams(dp(78), dp(50)))
+                    moduleRow.addView(button, LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    ))
                 }
             })
 

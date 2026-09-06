@@ -9,11 +9,13 @@ from refresh_state import get_dialogue_sequence
 from widget_config import (
     WIDTH, HEIGHT, BASE, OUTPUT, DEFAULT_LOCATION,
     F_TIME, F_DATE, F_LOC, F_TEMP, F_WEATHER, F_SMALL, F_TINY, F_BUBBLE,
-    F_HOUR_SMALL, load_layout, weather_name, get_weather, get_location,
+    F_HOUR_SMALL, F_AI_INPUT, load_layout, weather_name, get_weather, get_location,
 )
 from widget_ui import rounded, centered_text
 from widget_theme import theme_color
 from dialogue_bubble import draw_dialogue_bubble
+from ai_dialogue import active_answer
+from ai_input import draw_ai_input
 from layout_geometry import current_character_path
 
 LAYOUT = load_layout()
@@ -151,7 +153,7 @@ if future and LAYOUT["forecast"].get("visible", 1):
 # bottom-left area reserved for future chat UI
 
 # dialogue decision is decoupled into dialogue.py
-line = os.environ.get("ANIME_WIDGET_DIALOGUE_OVERRIDE") or get_maid_line(
+line = active_answer() or os.environ.get("ANIME_WIDGET_DIALOGUE_OVERRIDE") or get_maid_line(
     w, now, BASE / "dialogue", variation=get_dialogue_sequence()
 )
 
@@ -179,6 +181,10 @@ try: stamp=datetime.fromisoformat(w["updated"]).strftime("%H:%M")
 except: stamp="--:--"
 if LAYOUT["weather"].get("visible", 1):
     draw.text((WX+287,WY+160),f"更新 {stamp}",font=F_TINY,fill=text_color)
+
+# The native transparent touch target uses the same layout JSON coordinates.
+if LAYOUT["ai_input"].get("visible", 1):
+    draw_ai_input(img, F_AI_INPUT, LAYOUT["ai_input"])
 
 temp_output = OUTPUT.with_suffix(".tmp.png")
 img.convert("RGB").save(temp_output,"PNG",optimize=True)

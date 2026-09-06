@@ -17,6 +17,7 @@ data class WidgetModuleSpec(
 object WidgetModuleSpecs {
     val clock = WidgetModuleSpec(width = 480, height = 180, textSize = 72)
     val refresh = WidgetModuleSpec(width = 176, height = 176, padding = 36)
+    val aiInput = WidgetModuleSpec(width = 430, height = 72)
 
     fun designScale(rect: ContentRect): Float = if (rect.width > 0f) {
         rect.width / WidgetLayoutCodec.DESIGN_WIDTH
@@ -47,7 +48,8 @@ object WidgetLayoutCodec {
         "forecast" to DesignPoint(48, 655),
         "refresh" to DesignPoint(976, 8),
         "character" to DesignPoint(382, 194),
-        "bubble" to DesignPoint(500, 170)
+        "bubble" to DesignPoint(500, 170),
+        "ai_input" to DesignPoint(735, 704)
     )
 
     fun defaultPoint(name: String): DesignPoint = defaults[name] ?: DesignPoint(0, 0)
@@ -92,7 +94,10 @@ object WidgetGeometryCodec {
         val root = runCatching { JSONObject(json) }.getOrNull() ?: return emptyMap()
         val source = root.optJSONObject("modules") ?: root
         val result = mutableMapOf<String, ModuleGeometry>()
-        val names = listOf("date", "clock", "location", "weather", "forecast", "bubble", "character", "refresh")
+        val names = listOf(
+            "date", "clock", "location", "weather", "forecast", "bubble",
+            "character", "refresh", "ai_input"
+        )
         for (name in names) {
             val item = source.optJSONObject(name)
                 ?: if (name == "character") source.optJSONObject("maid") else null

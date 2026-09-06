@@ -185,6 +185,33 @@ def test_amap_geocoding_json(lat, lon, amap_key, amap_private_key):
     return json.dumps(result, ensure_ascii=False)
 
 
+def get_ai_weather_context_json():
+    """Return a compact, credential-free weather snapshot for one local AI turn."""
+    from widget_config import get_location, get_weather, weather_name
+    weather = get_weather()
+    hourly = []
+    for item in weather.get("hourly", [])[:3]:
+        hourly.append({
+            "time": item.get("time"),
+            "temperature": item.get("temperature"),
+            "weather": weather_name(item.get("weather_code", -1)),
+            "rain_probability": item.get("rain_probability"),
+        })
+    value = {
+        "location": get_location(weather),
+        "temperature": weather.get("temperature"),
+        "feels_like": weather.get("feels_like"),
+        "humidity": weather.get("humidity"),
+        "weather": weather_name(weather.get("weather_code", -1)),
+        "wind_speed": weather.get("wind_speed"),
+        "daily_max": weather.get("max"),
+        "daily_min": weather.get("min"),
+        "hourly": hourly,
+        "updated": weather.get("updated"),
+    }
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
 def get_layout_config_json():
     from layout_service import get_layout_json
     return get_layout_json()

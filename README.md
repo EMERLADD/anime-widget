@@ -1,67 +1,128 @@
-# anime-widget v8 → APK 打包产物合集（Emr260824 版）
+# Anime Maid Widget
 
-本压缩包完整保留了从 v8 原始 Python 源码到最终可安装 Android APK 的全部阶段性产物，按处理流程分文件夹整理。全程在 Termux 环境内完成打包（未使用 PC / Android Studio / proot-distro），核心技术路径为 Chaquopy（Python-Kotlin 桥接框架）。
+一个以 Android 桌面小组件为主体的本地天气助手。界面由 Kotlin、
+Android RemoteViews 和 Chaquopy/Pillow 共同实现，支持天气刷新、定位、
+角色对话、主题配色、模块拖动，以及可选的本地小模型天气建议。
 
-## 目录结构说明
+当前版本：**2.2.1**
 
+## 主要功能
+
+- Android 原生桌面小组件与启动器设置中心
+- 系统 TextClock，应用进程停止后时间仍可继续更新
+- 当前天气、体感温度、湿度及未来三小时预报
+- Android 定位与可选高德逆地理编码
+- 半小时天气强制刷新、手动刷新和缓存一致性处理
+- 角色图片、主题颜色、对话内容和模块位置自定义
+- 日期、时间、地点、天气、预报、角色、角色对话框、刷新按钮和
+  AI 用户输入框独立维护
+- 窄屏及大字体下自适应的应用内按钮布局
+
+## v2.2.1 本地 AI 天气助手
+
+本地 AI 是完全可选的，不下载模型也不影响普通天气小组件。
+
+点击小组件上的“点击以询问天气意见”后，会在桌面上方显示一个透明、
+无页面切换动画的底部输入浮层。浮层打开时会提前预热模型，提交后回答直接
+覆盖角色对话框。用户可以在设置中心恢复普通角色对话。
+
+每次请求只包含：
+
+1. 固定的天气建议规则
+2. 最多 50 个字符的用户角色提示词
+3. 程序筛选后的当前或未来天气事实
+4. 本次用户问题
+
+模型不保存聊天上下文。生成完成或退出浮层后，模型在进程中保留 60 秒；
+期间再次询问会重置计时，空闲超时后释放。Android 在内存紧张时仍可能提前
+回收应用进程。
+
+### 确定性天气路由
+
+天气范围不交给 0.8B 模型猜测，而是由程序根据问题路由：
+
+- “现在、当前、出门、穿什么、带伞、体感”等词选择当前天气
+- “未来、稍后、几小时后、几点、晚上、预报”等词选择未来三小时
+- 同时命中或无法明确判断时选择当前和未来
+
+程序会把天气 JSON 重组成中文事实，并将实际天气和温度作为确定性前缀拼入
+最终回答。AI 只负责生成简短行动建议，不能重新判断天气类型，从而避免把
+“毛毛雨”描述成“天气晴好”。
+
+### 可选模型
+
+- 仓库：<https://modelscope.cn/models/unsloth/Qwen3.5-0.8B-GGUF>
+- 文件：`Qwen3.5-0.8B-Q4_K_M.gguf`
+- 大小：532,517,120 字节（约 508 MiB）
+- SHA-256：
+  `bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517`
+
+模型只会在用户点击下载按钮后保存到应用私有目录。下载支持暂停、续传、
+可用空间检查、文件大小验证和 SHA-256 校验，模型本身不会打进 APK。
+
+推理运行库基于 `ggml-org/llama.cpp` v0.3.0，使用通用 ARM64 CPU 构建。
+第三方来源和许可证见
+[`THIRD_PARTY_NOTICES.md`](03_android_project_final/anime-widget-v8-android/THIRD_PARTY_NOTICES.md)。
+
+## 源码目录
+
+```text
+01_source_original/         原始 Python 项目存档
+02_build_environment/       Termux/Chaquopy 构建环境资料
+03_android_project_final/   当前 Android Gradle 工程
+04_build_apk/               构建过程资料
+final_apk/                  本地构建的 APK（默认被 Git 忽略）
 ```
-01_source_original/         原始 Python 源码（v8，未经修改）
-02_build_environment/       构建环境相关产物
-03_android_project_final/   最终 Android Gradle 工程完整源码
-04_build_apk/               构建过程中生成的关键资源
-05_final_apk/                最终可安装 APK
+
+Android 工程入口：
+`03_android_project_final/anime-widget-v8-android`
+
+主要模块：
+
+- `app/src/main/kotlin/com/animewidget/maid/`：Activity、Widget、定位、
+  刷新、布局编辑、模型管理和天气路由
+- `app/src/main/kotlin/com/arm/aichat/internal/`：llama.cpp JNI 生命周期
+- `app/src/main/python/`：天气服务、缓存、布局和 Pillow 渲染
+- `app/src/main/jniLibs/arm64-v8a/`：通用 ARM64 推理运行库
+- `app/src/main/assets/anime-widget-data/`：角色、字体、对话和默认配置
+
+## Termux 构建
+
+项目位于 Android 共享存储时，不要直接执行 Gradle。Chaquopy 和部分构建步骤
+需要正常的 Unix 文件权限，应先把完整工程复制到 Termux 内部临时目录。
+
+构建环境：
+
+- Gradle 8.10.2
+- Android compileSdk/targetSdk 35
+- minSdk 26
+- Java 17
+- Python 3.13（Chaquopy buildPython）
+- Termux 原生 `aapt2`
+- 目标 ABI：`arm64-v8a`
+
+示例流程：
+
+```sh
+cp -R 03_android_project_final/anime-widget-v8-android \
+  /data/data/com.termux/files/usr/tmp/anime-widget-build
+cd /data/data/com.termux/files/usr/tmp/anime-widget-build
+printf 'sdk.dir=/data/data/com.termux/files/home/android-sdk\n' > local.properties
+/data/data/com.termux/files/home/.local/gradle/gradle-8.10.2/bin/gradle \
+  --no-daemon \
+  -Dorg.gradle.project.android.aapt2FromMavenOverride=/data/data/com.termux/files/usr/bin/aapt2 \
+  clean assembleDebug
 ```
 
----
-
-### 01_source_original/
-
-v8 版本原始项目源码压缩包及解压后的完整目录，逻辑代码未做任何改动：
-- `render.py`：主渲染逻辑（PIL 绘图）
-- `update_data.py`：定位与天气数据获取
-- `dialogue.py`：对白选择逻辑（新增天气变化强制提醒、极端温度分支）
-- `weather_icons.py`：**v8 新增**，天气图标程序化绘制模块（用 PIL 几何图形按天气类型动态生成，不再依赖外部图标素材，并支持夜间/白天的图形差异）
-- `widget.py`：原始 Termux GUI 推送脚本（Android 化后已弃用，仅作存档）
-- `assets/`、`data/`、`dialogue/`：角色图、布局配置、对白文本库（v8 对白库含实际内容）
-
-### 02_build_environment/
-
-- `py313-android-aarch64.tar.gz`：在 Termux 内从 Python 官方源码编译好的完整 Python 3.13.7（aarch64 架构），用于 Chaquopy 的 buildPython 配置。可直接解压复用，无需重新编译。
-- `disable_macros.sh`：批量禁用 Android Bionic libc 缺失函数宏的脚本（编译 Python 时用到）
-- `patch_pwdmodule.sh`：修复 Python 源码 pwdmodule.c 编译报错的补丁脚本
-
-### 03_android_project_final/
-
-完整的 Android Gradle 工程源码（已排除 `build/` 编译缓存目录，可重新构建）。包含：
-- Kotlin 层：`AnimeMaidWidget.kt`（AppWidgetProvider，协程异步渲染）、`ConfigActivity.kt`（Widget 配置协议+定位权限请求）、`PythonBridge.kt`（Kotlin↔Python 桥接）、`AssetInstaller.kt`（首启资源解压）
-- Python 层：原始四个 .py 文件 + 新增的 `bridge.py`（胶水层，零改动原文件）
-- 资源层：`assets/anime-widget-data/`（角色图、对白库、字体）
-- Gradle 配置：`build.gradle`、`settings.gradle`、`gradle.properties`（含阿里云镜像加速配置）
-
-### 04_build_apk/
-
-本目录预留，存放构建过程中生成的关键资源与配置说明（当前版本以程序化天气图标为主，未使用外部图标素材；字体为子集化裁剪版本）。
-
-### 05_final_apk/
-
-- `anime-widget-Emr260824-debug.apk`：最终产物，debug 签名，可直接安装到 Android 真机。已在真机验证运行成功。
-
----
-
-## 技术路线摘要
-
-原项目是一个在 Termux 环境下运行的 Android 桌面小组件（显示时间、天气、定位、动画角色及智能对白）。由于目标形态是**桌面 Widget（AppWidgetProvider）**而非普通全屏 App，唯一可行的打包方案是 **Chaquopy**（不能用 Kivy/Buildozer，那类方案只能生成全屏 Activity，无法生成真正的桌面 Widget）。
-
-移植过程中原始 Python 逻辑代码基本保持零改动，仅新增一个 `bridge.py` 承担与 Kotlin 层的参数传递和调用编排；Android 系统能力（定位、Widget 生命周期、后台定时刷新）全部在 Kotlin 层用原生 API 实现。
-
-### v8 相比旧版的主要变化
-
-- **天气图标程序化绘制**：新增 `weather_icons.py`，用 PIL 几何图形按天气类型动态生成图标，不再依赖外部图片资源，且支持白天/夜间两种形态（内置了"资产图覆盖"的开关但默认关闭）
-- **对白增强**：新增天气变化时强制提醒一句话、极端温度（≥33° 或 ≤5°）分支、跨渲染记住上次天气类别
-- **天气卡片更丰富**：新增体感温度、湿度、3 小时预报（含降水概率）
+输出位于 `app/build/outputs/apk/debug/app-debug.apk`。交付前应验证 ZIP 完整性、
+APK v2 签名、Manifest 中的 Launcher、Widget Receiver 及 AppWidgetProvider
+元数据。
 
 ## 已知限制
 
-- 当前为 debug 签名 APK，仅供个人测试安装，未做正式签名和混淆
-- AlarmManager 使用非精确闹钟，Android 系统 Doze 省电模式下实际刷新间隔可能与设定值有出入（系统机制限制，非代码缺陷）
-- `weather_icons.py` 的"资产图覆盖"模式默认关闭（`ICON_MODE = "procedural"`），如需改用自定义图片图标，需将 `ICON_MODE` 改为 `"asset"` 并把对应 `<kind>.png` 放入 `Path.home()/anime-widget/icons/` 目录（改动在工具源码侧，不涉及本 APK）
+- 当前产物使用 Android debug 签名，仅适合个人测试
+- 仅打包 ARM64，不能安装在只支持 32 位 ABI 的设备上
+- 标准 RemoteViews 不支持直接编辑文本，因此桌面输入通过透明 Activity 浮层实现
+- 首次读取约 508 MiB 模型仍受手机存储速度和内存性能影响
+- 系统省电、后台限制或内存压力可能延迟刷新或提前结束 60 秒模型保温
+- 本地 0.8B 模型只负责简短建议，不适合复杂推理或长期对话

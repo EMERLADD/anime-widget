@@ -32,7 +32,7 @@ class LauncherActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        title = "Anime Maid Widget v2.0"
+        title = "Anime Maid Widget v2.2.1"
         setContentView(buildUi())
         AppThemeManager.apply(this)
     }
@@ -67,6 +67,7 @@ class LauncherActivity : Activity() {
             textSize = 17f
             isAllCaps = false
             gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            minHeight = dp(78)
             setPadding(dp(18), dp(12), dp(18), dp(12))
             setOnClickListener { action() }
         }
@@ -82,7 +83,7 @@ class LauncherActivity : Activity() {
                 setTextColor(Color.rgb(24, 86, 150))
             })
             addView(TextView(context).apply {
-                text = "v2.0 设置主菜单"
+                text = "v2.2.1 设置中心"
                 textSize = 14f
                 gravity = Gravity.CENTER
                 setPadding(0, dp(3), 0, dp(18))
@@ -96,13 +97,19 @@ class LauncherActivity : Activity() {
             })
             addView(menuButton("对话管理", "逐条管理内置和自定义对话") {
                 startActivity(Intent(this@LauncherActivity, DialogueSettingsActivity::class.java))
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78)))
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(menuButton("天气 API", "天气源、API Key、自定义 JSON 翻译") {
                 startActivity(Intent(this@LauncherActivity, WeatherSettingsActivity::class.java))
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78)))
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(menuButton("本地 AI 天气助手", "可选下载模型、设置角色提示词并询问天气") {
+                startActivity(Intent(this@LauncherActivity, AiSettingsActivity::class.java))
+            }, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ))
             addView(menuButton("定位权限", "授权精确位置与后台位置，供半小时强制刷新") {
                 requestWidgetLocationPermissions()
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78)))
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
             addView(TextView(context).apply {
                 text = "外观资源"
@@ -112,10 +119,10 @@ class LauncherActivity : Activity() {
             })
             addView(menuButton("布局编辑", "在应用预览中长按拖动各模块") {
                 startActivity(Intent(this@LauncherActivity, LayoutEditorActivity::class.java))
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78)))
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(menuButton("角色与主题", "导入透明 PNG，并配置自动或手动主题") {
                 startActivity(Intent(this@LauncherActivity, CharacterSettingsActivity::class.java))
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78)))
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(TextView(context).apply {
                 text = "帮助"
                 textSize = 19f
@@ -124,7 +131,7 @@ class LauncherActivity : Activity() {
             })
             addView(menuButton("关于", "程序说明、API 常见问题与服务商官网") {
                 startActivity(Intent(this@LauncherActivity, AboutActivity::class.java))
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(78)))
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         })
     }
 

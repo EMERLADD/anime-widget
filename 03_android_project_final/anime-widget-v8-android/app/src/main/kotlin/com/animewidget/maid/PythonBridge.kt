@@ -133,6 +133,13 @@ object PythonBridge {
     }
 
     @Synchronized
+    fun getAiWeatherContextJson(context: Context): String {
+        ensureStarted(context)
+        return Python.getInstance().getModule("bridge")
+            .callAttr("get_ai_weather_context_json").toString()
+    }
+
+    @Synchronized
     fun getLayoutConfigJson(context: Context): String {
         ensureStarted(context)
         return Python.getInstance().getModule("bridge")

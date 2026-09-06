@@ -32,12 +32,27 @@
             android:exported="false" />
 
         <activity
+            android:name=".AiSettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".AiQuestionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.AnimeWidget.AiOverlay" />
+
+        <activity
             android:name=".LayoutEditorActivity"
             android:exported="false" />
 
         <activity android:name=".CharacterSettingsActivity" android:exported="false" />
 
         <activity android:name=".AboutActivity" android:exported="false" />
+
+        <service
+            android:name=".AiKeepAliveService"
+            android:exported="false"
+            android:stopWithTask="false" />
 
         <receiver
             android:name=".AnimeMaidWidget"

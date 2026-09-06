@@ -49,5 +49,10 @@
     "radius": 42,
     "padding": 30,
     "visible": 1
+  },
+  "ai_input": {
+    "x": 735,
+    "y": 704,
+    "visible": 1
   }
 }

@@ -43,7 +43,7 @@ def font(size, bold=False):
 
 F_TIME=font(165,True); F_DATE=font(38,True); F_LOC=font(36,True)
 F_TEMP=font(98,True); F_WEATHER=font(44,True); F_SMALL=font(30,True)
-F_TINY=font(23); F_BUBBLE=font(38,True)
+F_TINY=font(23); F_BUBBLE=font(38,True); F_AI_INPUT=font(28,True)
 F_HOUR=font(25,True); F_HOUR_SMALL=font(21,True)
 
 DEFAULT_LAYOUT = {
@@ -58,7 +58,8 @@ DEFAULT_LAYOUT = {
         "x1": 500, "y1": 170, "x2": 860, "y2": 395,
         "tail_x": 890, "tail_y": 435,
         "radius": 42, "padding": 30, "visible": 1
-    }
+    },
+    "ai_input": {"x": 735, "y": 704, "visible": 1},
 }
 
 def load_layout():

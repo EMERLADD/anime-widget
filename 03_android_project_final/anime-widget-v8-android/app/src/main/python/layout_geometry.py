@@ -8,9 +8,12 @@ MIN_VISIBLE = 32
 MODULE_SIZES = {
     "date": (452, 70), "clock": (480, 180), "location": (340, 95),
     "weather": (562, 225), "forecast": (662, 118), "bubble": (450, 314),
-    "maid": (800, 600), "refresh": (176, 176),
+    "maid": (800, 600), "refresh": (176, 176), "ai_input": (430, 72),
 }
-MODULE_NAMES = ("date", "clock", "location", "weather", "forecast", "bubble", "maid", "refresh")
+MODULE_NAMES = (
+    "date", "clock", "location", "weather", "forecast", "bubble", "maid",
+    "refresh", "ai_input",
+)
 
 
 def current_character_path():
