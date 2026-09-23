@@ -65,8 +65,13 @@ class AboutActivity : Activity() {
             textSize = 14f
             isAllCaps = false
             gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            minHeight = dp(58)
+            setPadding(dp(14), dp(9), dp(14), dp(9))
             setOnClickListener { openUrl(url) }
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(58)).apply {
+        }, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
             bottomMargin = dp(5)
         })
     }

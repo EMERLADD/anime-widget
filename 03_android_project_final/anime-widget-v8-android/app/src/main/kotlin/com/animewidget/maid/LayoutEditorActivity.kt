@@ -155,10 +155,15 @@ class LayoutEditorActivity : Activity() {
                     val button = Button(context).apply {
                         text = module.label
                         isAllCaps = false
+                        minHeight = dp(50)
+                        setPadding(dp(12), dp(8), dp(12), dp(8))
                         setOnClickListener { selectModule(module.id) }
                     }
                     moduleButtons[module.id] = button
-                    moduleRow.addView(button, LinearLayout.LayoutParams(dp(78), dp(50)))
+                    moduleRow.addView(button, LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    ))
                 }
             })
 

@@ -91,8 +91,20 @@ class WeatherSettingsActivity : Activity() {
     }
 
     private fun buttonRow(vararg buttons: Button) = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        buttons.forEach { addView(it, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)) }
+        val stacked = resources.configuration.screenWidthDp < 420 ||
+            resources.configuration.fontScale >= 1.25f
+        orientation = if (stacked) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+        buttons.forEach {
+            it.minHeight = dp(50)
+            addView(it, if (stacked) {
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            } else {
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            })
+        }
     }
 
     private fun buildUi(): View {
