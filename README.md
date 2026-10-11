@@ -1,46 +1,34 @@
-# Anime Maid Widget（无 AI 分支）
+# Anime Maid Widget
 
-Android 桌面天气小组件，使用 Kotlin、Android RemoteViews 和 Chaquopy/Pillow
-实现。此分支保留天气、定位、角色对话、主题配色、模块拖动及应用内窄屏适配，
-不包含本地模型、llama.cpp、AI 输入框或 AI 设置入口。
+一款可自定义角色与外观的 Android 桌面天气小组件。让时间、天气和角色台词
+一起出现在桌面上，并按自己的喜好调整颜色和布局。
 
-版本：**2.2.2-no-ai**（versionCode 18）
+当前版本：**2.2.2-no-ai**。此分支为无 AI 版本。
 
 ## 功能
 
-- 当前天气、体感温度、湿度和未来三小时预报
-- Android 定位与可选高德逆地理编码
-- 半小时天气强制刷新、手动刷新和缓存一致性处理
-- 角色图片、主题颜色、对话内容和模块位置自定义
-- 系统 TextClock，应用进程停止后时间仍可继续更新
-- 窄屏及大字体下自适应的应用内按钮布局
+- 显示时间、日期、地点、当前天气、体感温度和湿度
+- 查看未来三小时天气及降水概率
+- 每半小时尝试自动刷新，也可点击刷新按钮手动更新
+- 导入自己的透明 PNG 角色图片，自定义角色台词
+- 调整主题配色、模块位置，以及部分模块的大小
+- 设置界面适配窄屏和大字体
 
-## 源码目录
+## 安装与使用
 
-```text
-01_source_original/         原始 Python 项目存档
-02_build_environment/       Termux/Chaquopy 构建环境资料
-03_android_project_final/   Android Gradle 工程
-04_build_apk/               构建过程资料
-final_apk/                  本地构建的 APK（默认被 Git 忽略）
-```
+支持 Android 8.0 及以上的 64 位 ARM 手机。
 
-Android 工程位于 `03_android_project_final/anime-widget-v8-android`。
-`app/src/main/kotlin/com/animewidget/maid/` 负责系统小组件、定位、刷新、
-设置和布局编辑；`app/src/main/python/` 负责天气服务、缓存和图片渲染。
+1. 安装 APK，打开应用设置天气来源并授权定位。
+2. 在桌面长按空白处，进入“小组件”，添加 Anime Maid Widget。
+3. 在应用中通过“角色与主题”“对话管理”和“布局编辑”调整外观。
 
-## Termux 构建
+如需使用高德显示地点名称，可在“天气 API”中填写自己的高德 Web 服务 Key。
 
-共享存储不适合直接执行 Gradle。先将完整工程复制到 Termux 内部临时目录，
-使用 Gradle 8.10.2、Android 35、Python 3.13 和 Termux 原生 `aapt2`
-执行 `assembleDebug`。项目最低支持 Android 8.0（API 26），目标 ABI 为
-`arm64-v8a`。
+当前提供独立发布签名的 APK。如果此前安装的是测试签名版，首次切换需先卸载
+旧版；卸载会清除原来的设置。之后使用相同发布签名的安装包即可覆盖升级。
 
-交付前验证 APK ZIP 完整性、v2 签名、Manifest 中的 Launcher、Widget
-Receiver 和 AppWidgetProvider 元数据。
+## 使用提示
 
-## 安装说明
-
-此分支与主线使用相同的应用 ID `com.animewidget.maid`。若安装包采用与已装
-版本相同的签名，可以覆盖升级；若签名不同，Android 会拒绝覆盖安装。
-当前 APK 为 debug 签名，仅适合个人测试。
+- 自动刷新可能受手机省电策略和后台限制影响；可按需要允许应用后台运行。
+- 天气与地点服务需要网络，定位需要相应权限。
+- 无 AI 分支和主线版本使用相同应用标识，会相互覆盖安装。
